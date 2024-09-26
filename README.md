@@ -29,4 +29,5 @@ graph TD
     G[S3 Bucket] --> H[Lambda Function]
     H --> I[Update Patch Baseline and Instance Target (Only for Installation)]
     I --> D2
+    
 ```    
