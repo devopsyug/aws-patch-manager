@@ -28,40 +28,52 @@ Metadata:
           - ScheduleTimezone
           - NotificationEmailAddress
 Parameters:
+
+# ------------ Project Information Parameter  ---------------------
   AWSAccountID:
     Description: AWS Account ID of this Resources
     Type: String
     Default: '123456789'
+
   AccountOwner:
     Description: AWS Accont Owner of this Resources
     Type: String
-    Default: chaitanya
+    Default: devopsyug
+  
   ProjectName:
     Description: Client Project Name in small letter case
     Type: String
-    Default: che-demo
+    Default: devopsyug-demo
+
   Environment:
     Description: Envoironment Name of Resource (ex. dev, stage, production) in small letter case
     Type: String
     Default: dev
+
   RequestID:
     Description: Request ID of Task for this Resource
     Type: String
     Default: '123456'
+
   ApproverName:
     Description: 'Approver Name for this Resource '
     Type: String
-    Default: chaitanya
+    Default: devopsyug
+
+# --------------- Patch Configuation Parameter ---------------------
   PatchScanMaintenanceWindowTime:
     Description: Patch Install MaintainanceWindow (MINUTE HOUR) eg. (00 09) -- 9:00 AM
     Type: String
     Default: 00 09
     MinLength: '1'
     ConstraintDescription: PatchScanMaintenanceWindowTime is Mandetory field to procced futher
+
   PatchScanMaintainanceWindowDayOfWeek:
     Description: MaintainanceWindow Day of the Week {Use * for Daily } eg. (MON, TUE, WED, THU, FRI, SAT, SUN)
+    ConstraintDescription: PatchScanMaintainanceWindowDayOfWeek is Mandetory field to procced futher
+    MinLength: '1'
     Type: String
-    Default: '*'
+    Default: '*'    
     AllowedValues:
       - '*'
       - MON
@@ -71,16 +83,19 @@ Parameters:
       - FRI
       - SAT
       - SUN
-    MinLength: '1'
-    ConstraintDescription: PatchScanMaintainanceWindowDayOfWeek is Mandetory field to procced futher
+    
+    
   OperatingSystem:
     Description: Server Operating System
     Type: String
     Default: WINDOWS
     AllowedValues:
       - WINDOWS
+
   WindowsOSVersion:
-    Description: Patch Operating OS Name
+    Description: Patch Operating Windows OS Name
+    ConstraintDescription: WindowsOSVersion is an Mandetory Field to Proceed Further
+    MinLength: '1'
     Type: String
     Default: WindowsServer2012
     AllowedValues:
@@ -89,37 +104,42 @@ Parameters:
       - WindowsServer2016
       - WindowsServer2019
       - WindowsServer2022
-    MinLength: '1'
-    ConstraintDescription: WindowsOSVersion is an Mandetory Field to Proceed Further
+
   PatchClassification:
     Description: Patching Classification for System This Classification is need to specify in these supported values and (*) will be used for all classification. So Use these values eg { CriticalUpdates, DefinitionUpdates, Drivers, FeaturePacks, SecurityUpdates, ServicePacks, Updates, Upgrades, *}
+    ConstraintDescription: PatchClassification is an Mandtory Field to Proceed Further
     Type: String
     Default: '*'
     MinLength: '1'
-    ConstraintDescription: PatchClassification is an Mandtory Field to Proceed Further
+    
   PatchSeverity:
     Description: Patching Severity for Operating System and need to specify these supported values and (*) will be used for all severity. So Use these values eg { Critical, Important, Medium, Low, *}
+    ConstraintDescription: PatchSeverity is an Mandetory Field to Proceed Further
     Type: String
     Default: '*'
     MinLength: '1'
-    ConstraintDescription: PatchSeverity is an Mandetory Field to Proceed Further
+    
   PatchGroupName:
     Description: Patching Tag Value (Intance Specfied with key - PatchGroup)
+    ConstraintDescription: PatchGroupName is an Mandtory Field to Proceed Further
     Type: String
     AllowedValues:
       - WindowsOS-PatchScan
     MinLength: '1'
-    ConstraintDescription: PatchGroupName is an Mandtory Field to Proceed Further
+    
   ScheduleTimezone:
     Description: Patching Schedule time zone
     Type: String
     Default: Etc/UTC
+
   NotificationEmailAddress:
     Description: Notification Email Address for SNS Topic
+    ConstraintDescription: NotificationEmailAddress is an Mandetory Field to Proceed Further
     Type: String
     MinLength: '1'
-    ConstraintDescription: NotificationEmailAddress is an Mandetory Field to Proceed Further
+    
 Resources:
+# SNS Notifictaion topic for email trigger
   NotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -155,12 +175,16 @@ Resources:
           Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
+
+# SNS Subscription for SNS Topics  
   NotificationTopicSubscription:
     Type: AWS::SNS::Subscription
     Properties:
       Endpoint: !Ref NotificationEmailAddress
       Protocol: Email
       TopicArn: !Ref NotificationTopic
+
+# IAM Role for the Patch Execution Opertaion with SSM window
   PatchExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -229,6 +253,8 @@ Resources:
           Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
+
+# Custom patch baseline for instance patch groups          
   PatchBaseLine:
     Type: AWS::SSM::PatchBaseline
     Properties:
@@ -249,11 +275,13 @@ Resources:
           - !Ref Environment
           - !Ref OperatingSystem
       OperatingSystem: !Ref OperatingSystem
+      # Name of Patch Group and tag should be applied into instance
       PatchGroups:
         - !Ref PatchGroupName
       ApprovalRules:
         PatchRules:
           - ApproveAfterDays: 0
+          # set level as UNSPECIFIED to scan all type of patches
             ComplianceLevel: UNSPECIFIED
             PatchFilterGroup:
               PatchFilters:
@@ -293,6 +321,8 @@ Resources:
           Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
+
+# SSM Mantainance window to execute patching task
   PatchScanMaintenanceWindow:
     Type: AWS::SSM::MaintenanceWindow
     Properties:
@@ -304,10 +334,12 @@ Resources:
           - !Ref Environment
           - !Ref OperatingSystem
           - MaintenanceWindow
+      # Setting Cron expression from prameter values in stack page    
       Schedule: !Sub cron(${PatchScanMaintenanceWindowTime} ? * ${PatchScanMaintainanceWindowDayOfWeek} * )
       Duration: 2
       Cutoff: 1
       AllowUnassociatedTargets: false
+      # timezone of the maintainance window
       ScheduleTimezone: !Ref ScheduleTimezone
       Tags:
         - Key: Name
@@ -333,6 +365,8 @@ Resources:
           Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
+
+# Maintainance window target for window tasks for patch instance          
   PatchScanMaintenanceWindowTarget:
     Type: AWS::SSM::MaintenanceWindowTarget
     Properties:
@@ -344,6 +378,7 @@ Resources:
           - !Ref Environment
           - !Ref OperatingSystem
           - WindowTarget
+# getting id of maintainance windows from above resource1
       WindowId: !Ref PatchScanMaintenanceWindow
       ResourceType: INSTANCE
       Targets:
@@ -361,6 +396,8 @@ Resources:
           - !Ref Environment
           - !Ref OperatingSystem
           - Maintainance Window Target
+
+# Maintaince window task to execute with patch baseline          
   PatchScanMaintenanceWindowTask:
     Type: AWS::SSM::MaintenanceWindowTask
     Properties:
@@ -397,6 +434,8 @@ Resources:
               - All
             NotificationType: Command
           ServiceRoleArn: !GetAtt PatchExecutionRole.Arn
+
+# Cloudwatch Log group for patch scan execution
   PatchLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
