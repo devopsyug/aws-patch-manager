@@ -16,6 +16,7 @@ This system uses a tag-based instance selection mechanism, allowing for targeted
 
 ## Architecture
 
+```
 graph TD
     A[CloudFormation Template] --> B[Custom Patch Baseline]
     B --> C[Tag-based Instance Selection]
@@ -27,3 +28,5 @@ graph TD
     G[S3 Bucket] --> H[Lambda Function]
     H --> I[Update Patch Baseline and Instance Target]
     I --> C
+
+```    
