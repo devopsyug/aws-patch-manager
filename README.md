@@ -21,7 +21,6 @@ graph TD
     A[CloudFormation Template] --> B[Custom Patch Baseline]
     B --> C[Tag-based Instance Selection]
     C --> D2[Patch Installation Task]
-    D1 --> E[Maintenance Window 1]
     D2 --> F[Maintenance Window 2]
 
     G[S3 Bucket] --> H[Lambda Function]
