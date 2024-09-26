@@ -111,6 +111,12 @@
                 "AllowedValues": ["LinuxOS-PatchInstall"]
           },
 
+          "ApproveAfterDays" : {
+            "Description" : "Patching Tag Value (Intance Specfied with key - PatchGroup)",
+            "Type" : "String",
+            "Default" : "12"
+      },
+
           "ScheduleTimezone" : {
               "Description" : "Patching Schedule time zone",
               "Type" : "String",
@@ -231,7 +237,7 @@
                 "PatchGroups" : [{"Ref" : "PatchGroupName"}],
                  "ApprovalRules" : {
                         "PatchRules" : [ {
-                            "ApproveAfterDays" : 0,
+                            "ApproveAfterDays" : {"Ref": "ApproveAfterDays"},
                             "ComplianceLevel" : "UNSPECIFIED",
                             "EnableNonSecurity" : true,
                             "PatchFilterGroup" : {
@@ -432,9 +438,7 @@
                                 "ssm:UpdatePatchBaseline",
                                 "ssm:DescribeMaintenanceWindows",
                                 "ssm:DescribeMaintenanceWindowTargets",
-                                "ssm:UpdateMaintenanceWindowTarget",
-                                "s3:GetObject",
-                                "s3:ListBucket"
+                                "ssm:UpdateMaintenanceWindowTarget"
                             ],
                             "Resource": "*"
                         },
@@ -445,13 +449,16 @@
                                 "logs:CreateLogGroup",
                                 "logs:CreateLogStream"
                         ],
-                            "Resource": "arn:aws:logs:*:*:*"
+                            "Resource": { 
+                              "Fn::GetAtt": [
+                                "PatchInstallLogGroup",
+                                "Arn"
+                              ]}
                         },
                         {
                             "Effect": "Allow",
                             "Action": [
                             "s3:GetObject",
-                            "s3:ListObject",
                             "s3:ListBucket"
                             ],
                             "Resource": {

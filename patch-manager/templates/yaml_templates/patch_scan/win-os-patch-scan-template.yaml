@@ -11,7 +11,6 @@ Metadata:
           - ProjectName
           - Environment
           - RequestID
-          - ApproverName
       - Label:
           default: Recommended - Patch Config Details
         Parameters:
@@ -54,11 +53,6 @@ Parameters:
     Description: Request ID of Task for this Resource
     Type: String
     Default: '123456'
-
-  ApproverName:
-    Description: 'Approver Name for this Resource '
-    Type: String
-    Default: devopsyug
 
 # --------------- Patch Configuation Parameter ---------------------
   PatchScanMaintenanceWindowTime:
@@ -171,8 +165,6 @@ Resources:
           Value: !Ref ProjectName
         - Key: RequestID
           Value: !Ref RequestID
-        - Key: ApproverName
-          Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
 
@@ -249,8 +241,6 @@ Resources:
           Value: !Ref ProjectName
         - Key: RequestID
           Value: !Ref RequestID
-        - Key: ApproverName
-          Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
 
@@ -285,15 +275,15 @@ Resources:
               PatchFilters:
                 - Key: PRODUCT
                   Values:
-                    - !Ref WindowsOSVersion
+                    - !Ref WindowsOSVersion       # Replacing the value from parameter for windows OS version
                 - Key: CLASSIFICATION
                   Values: !Split
                     - ','
-                    - !Ref PatchClassification
+                    - !Ref PatchClassification    # Replacing the value from parameter for classification  
                 - Key: MSRC_SEVERITY
                   Values: !Split
                     - ','
-                    - !Ref PatchSeverity
+                    - !Ref PatchSeverity          # Replacing the value from parameter for sevrity
       ApprovedPatchesComplianceLevel: UNSPECIFIED
       Tags:
         - Key: Name
@@ -315,8 +305,6 @@ Resources:
           Value: !Ref ProjectName
         - Key: RequestID
           Value: !Ref RequestID
-        - Key: ApproverName
-          Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
 
@@ -331,14 +319,12 @@ Resources:
           - !Ref ProjectName
           - !Ref Environment
           - !Ref OperatingSystem
-          - MaintenanceWindow
-      # Setting Cron expression from prameter values in stack page    
-      Schedule: !Sub cron(${PatchScanMaintenanceWindowTime} ? * ${PatchScanMaintainanceWindowDayOfWeek} * )
+          - MaintenanceWindow         
+      Schedule: !Sub cron(${PatchScanMaintenanceWindowTime} ? * ${PatchScanMaintainanceWindowDayOfWeek} * )           # Setting Cron expression from prameter values in stack page
       Duration: 2
       Cutoff: 1
       AllowUnassociatedTargets: false
-      # timezone of the maintainance window
-      ScheduleTimezone: !Ref ScheduleTimezone
+      ScheduleTimezone: !Ref ScheduleTimezone           # timezone of the maintainance window
       Tags:
         - Key: Name
           Value: !Join
@@ -359,8 +345,6 @@ Resources:
           Value: !Ref ProjectName
         - Key: RequestID
           Value: !Ref RequestID
-        - Key: ApproverName
-          Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
 
@@ -376,7 +360,7 @@ Resources:
           - !Ref Environment
           - !Ref OperatingSystem
           - WindowTarget
-# getting id of maintainance windows from above resource1
+# Getting id of maintainance windows from above resource
       WindowId: !Ref PatchScanMaintenanceWindow
       ResourceType: INSTANCE
       Targets:
@@ -466,7 +450,5 @@ Resources:
           Value: !Ref ProjectName
         - Key: RequestID
           Value: !Ref RequestID
-        - Key: ApproverName
-          Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName

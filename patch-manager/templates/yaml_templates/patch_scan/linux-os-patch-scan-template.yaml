@@ -11,7 +11,6 @@ Metadata:
           - ProjectName
           - Environment
           - RequestID
-          - ApproverName
       - Label:
           default: Recommended - Patch Config Details
         Parameters:
@@ -130,7 +129,8 @@ Conditions:
     - !Ref OperatingSystem
     - AMAZON_LINUX_2023
 
-# ----- Resource creation template for Patch manager
+# ------------- Resource creation template for Patch manager ---------------
+
 Resources:
 # SNS Notifictaion topic for email trigger
   NotificationTopic:
@@ -164,8 +164,6 @@ Resources:
           Value: !Ref ProjectName
         - Key: RequestID
           Value: !Ref RequestID
-        - Key: ApproverName
-          Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
 
@@ -242,8 +240,6 @@ Resources:
           Value: !Ref ProjectName
         - Key: RequestID
           Value: !Ref RequestID
-        - Key: ApproverName
-          Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
 
@@ -270,11 +266,11 @@ Resources:
       OperatingSystem: !Ref OperatingSystem
 
       PatchGroups:
-        - !Ref PatchGroupName                         # Name of Patch Group and tag should be applied into instance
+        - !Ref PatchGroupName                                 # Name of Patch Group and tag should be applied into instance
       ApprovalRules:
         PatchRules:
           - ApproveAfterDays: 0
-            ComplianceLevel: UNSPECIFIED
+            ComplianceLevel: UNSPECIFIED                      # Set level as UNSPECIFIED to scan all type of patches
             EnableNonSecurity: true
             PatchFilterGroup:
               PatchFilters:
@@ -287,14 +283,14 @@ Resources:
                         - IsAmazonLinux2023
                         - AmazonLinux2023
                         - 'null'
-                - Key: CLASSIFICATION
+                - Key: CLASSIFICATION                           # Replacing the value from parameter for windows OS version
                   Values: !Split
                     - ','
-                    - !Ref PatchClassification
+                    - !Ref PatchClassification                  # Replacing the value from parameter for classification
                 - Key: SEVERITY
                   Values: !Split
                     - ','
-                    - !Ref PatchSeverity
+                    - !Ref PatchSeverity                        # Replacing the value from parameter for sevrity
       ApprovedPatchesComplianceLevel: UNSPECIFIED
       ApprovedPatchesEnableNonSecurity: true
       Tags:
@@ -317,10 +313,10 @@ Resources:
           Value: !Ref ProjectName
         - Key: RequestID
           Value: !Ref RequestID
-        - Key: ApproverName
-          Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
+
+# SSM Mantainance window to execute patching task          
   PatchScanMaintenanceWindow:
     Type: AWS::SSM::MaintenanceWindow
     Properties:
@@ -332,11 +328,11 @@ Resources:
           - !Ref ProjectName
           - !Ref OperatingSystem
           - MaintenanceWindow
-      Schedule: !Sub cron(${PatchScanMaintainanceWindowTime} ? * ${PatchScanMaintainanceWindowDayOfWeek} * )
+      Schedule: !Sub cron(${PatchScanMaintainanceWindowTime} ? * ${PatchScanMaintainanceWindowDayOfWeek} * )          # Setting Cron expression from prameter values in stack page
       Duration: 2
       Cutoff: 1
       AllowUnassociatedTargets: false
-      ScheduleTimezone: !Ref ScheduleTimezone
+      ScheduleTimezone: !Ref ScheduleTimezone           # timezone of the maintainance window from parameter value
       Tags:
         - Key: Name
           Value: !Join
@@ -357,10 +353,10 @@ Resources:
           Value: !Ref ProjectName
         - Key: RequestID
           Value: !Ref RequestID
-        - Key: ApproverName
-          Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
+
+# Maintainance window target for window tasks for patch instance         
   PatchScanMaintenanceWindowTarget:
     Type: AWS::SSM::MaintenanceWindowTarget
     Properties:
@@ -374,6 +370,8 @@ Resources:
           Values:
             - !Ref Environment
       OwnerInformation: Patch Scan Maintainance Window Target for Instance
+
+# Maintaince window task to execute with patch baseline
   PatchScanMaintenanceWindowTask:
     Type: AWS::SSM::MaintenanceWindowTask
     Properties:
@@ -402,6 +400,8 @@ Resources:
               - All
             NotificationType: Command
           ServiceRoleArn: !GetAtt PatchExecutionRole.Arn
+
+# Cloudwatch Log group for patch scan execution          
   PatchScanLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -434,7 +434,6 @@ Resources:
           Value: !Ref ProjectName
         - Key: RequestID
           Value: !Ref RequestID
-        - Key: ApproverName
-          Value: !Ref ApproverName
+
         - Key: StackName
           Value: !Ref AWS::StackName

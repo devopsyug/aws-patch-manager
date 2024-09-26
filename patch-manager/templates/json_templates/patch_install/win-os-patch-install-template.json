@@ -438,7 +438,12 @@
                                   "logs:CreateLogGroup",
                                   "logs:CreateLogStream"
                           ],
-                              "Resource": "arn:aws:logs:*:*:*"
+                              "Resource": {
+                                "Fn::GetAtt": [
+                                "PatchInstallLogGroup",
+                                "Arn"
+                              ]
+                            }
                           },
                           {
                               "Effect": "Allow",

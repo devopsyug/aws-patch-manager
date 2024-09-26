@@ -2,6 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS SSM Patch Manager - Project Root#
 Metadata:
   AWS::CloudFormation::Interface:
+# --------------- Parameter Groups for multiple defined parameter -----------------  
     ParameterGroups:
       - Label:
           default: Project Information Parameter
@@ -28,39 +29,50 @@ Metadata:
           - ScheduleTimezone
           - RejectedPatches
           - NotificationEmailAddress
+
 Parameters:
+# ------------ Project Information Parameter  ---------------------
   AWSAccountID:
     Description: AWS Account ID of this Resources
     Type: String
     Default: '123456789'
+
   AccountOwner:
     Description: AWS Accont Owner of this Resources
     Type: String
-    Default: chaitanya
+    Default: devopsyug
+
   ProjectName:
     Description: Client Project Name in small letter case
     Type: String
-    Default: che-demo
+    Default: devopsyug-demo
+
   Environment:
     Description: Envoironment Name of Resource (ex. dev, stage, production) in small letter case
     Type: String
     Default: dev
+
   RequestID:
     Description: Request ID of Task for this Resource
     Type: String
     Default: '123456'
+
   ApproverName:
     Description: 'Approver Name for this Resource '
     Type: String
-    Default: chaitanya
+    Default: devopsyug
+
+# ------------------------ Patch Configuation Parameter ---------------------
   PatchInstallMaintenanceWindowTime:
     Description: Patch Install MaintainanceWindow (MINUTE HOUR) eg. (00 09) -- 9:00 AM
+    ConstraintDescription: PatchInstallMaintenanceWindowTime is Mandetory field to procced futher
     Type: String
     Default: 00 09
     MinLength: '1'
-    ConstraintDescription: PatchInstallMaintenanceWindowTime is Mandetory field to procced futher
+    
   PatchInstallMaintainanceWindowDayOfWeek:
     Description: MaintainanceWindow Day of teh Week {Use * for Daily } eg. (MON, TUE, WED, THU, FRI, SAT, SUN)
+    ConstraintDescription: PatchInstallMaintainanceWindowDayOfWeek is Mandetory field to procced futher
     Type: String
     Default: '*'
     AllowedValues:
@@ -73,15 +85,17 @@ Parameters:
       - SAT
       - SUN
     MinLength: '1'
-    ConstraintDescription: PatchInstallMaintainanceWindowDayOfWeek is Mandetory field to procced futher
+    
   OperatingSystem:
     Description: Server Operating System
     Type: String
     Default: WINDOWS
     AllowedValues:
       - WINDOWS
+
   WindowsOSVersion:
-    Description: Patch Operating OS Name
+    Description: Windows Operating OS Name
+    ConstraintDescription: WindowsOSVersion is an Mandtory Field to Proceed Further
     Type: String
     Default: WindowsServer2012
     AllowedValues:
@@ -91,44 +105,53 @@ Parameters:
       - WindowsServer2019
       - WindowsServer2022
     MinLength: '1'
-    ConstraintDescription: WindowsOSVersion is an Mandtory Field to Proceed Further
+    
   PatchClassification:
     Description: Patching Classification for System This Classification is need to specify in these supported values and (*) will be used for all classification. So Use these values eg { CriticalUpdates, DefinitionUpdates, Drivers, FeaturePacks, SecurityUpdates, ServicePacks, Updates, Upgrades, *}
+    ConstraintDescription: PatchClassification is an Mandtory Field to Proceed Further
     Type: String
     Default: '*'
     MinLength: '1'
-    ConstraintDescription: PatchClassification is an Mandtory Field to Proceed Further
+    
   PatchSeverity:
     Description: Patching Severity for Operating System and need to specify these supported values and (*) will be used for all severity. So Use these values eg { Critical, Important, Medium, Low, *}
+    ConstraintDescription: PatchSeverity is an Mandtory Field to Proceed Further
     Type: String
     Default: '*'
     MinLength: '1'
-    ConstraintDescription: PatchSeverity is an Mandtory Field to Proceed Further
+
   PatchGroupName:
     Description: Patching Tag Value (Intance Specfied with key - PatchGroup)
+    ConstraintDescription: PatchGroupName is an Mandtory Field to Proceed Further
     Type: String
     AllowedValues:
       - WindowsOS-PatchInstall
     MinLength: '1'
-    ConstraintDescription: PatchGroupName is an Mandtory Field to Proceed Further
+
   ScheduleTimezone:
     Description: Patching Schedule time zone
     Type: String
     Default: Etc/UTC
+
   RejectedPatches:
     Description: Rejects Patches Name with Comma
     Type: String
     Default: ''
+
   NotificationEmailAddress:
     Description: Notification Email Address for SNS Topic
+    ConstraintDescription: NotificationEmailAddress is an Mandetory Field to Proceed Further
     Type: String
     MinLength: '1'
-    ConstraintDescription: NotificationEmailAddress is an Mandetory Field to Proceed Further
+
+# Condition specified to select operating system product name according to supported values    
 Conditions:
   HasRejectedPatches: !Not
     - !Equals
       - !Ref RejectedPatches
       - ''
+
+# ------------- Resource creation template for Patch manager ---------------      
 Resources:
   NotificationTopic:
     Type: AWS::SNS::Topic
@@ -165,12 +188,16 @@ Resources:
           Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
+
+# SNS Subscription for SNS Topics          
   NotificationTopicSubscription:
     Type: AWS::SNS::Subscription
     Properties:
       Endpoint: !Ref NotificationEmailAddress
       Protocol: Email
       TopicArn: !Ref NotificationTopic
+
+# IAM Role for the Patch Execution Opertaion with SSM window       
   PatchExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -239,6 +266,8 @@ Resources:
           Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
+
+# Custom patch baseline for instance patch groups          
   PatchBaseLine:
     Type: AWS::SSM::PatchBaseline
     Properties:
@@ -261,30 +290,30 @@ Resources:
       OperatingSystem: !Ref OperatingSystem
       RejectedPatchesAction: BLOCK
       RejectedPatches: !If
-        - HasRejectedPatches
+        - HasRejectedPatches                                    # if no value specified in RejectedPatches paramter it will treat as no value and this line will be deprecated from stack automtically
         - !Split
           - ','
           - !Ref RejectedPatches
         - !Ref AWS::NoValue
       PatchGroups:
-        - !Ref PatchGroupName
+        - !Ref PatchGroupName                                   # Name of Patch Group and tag should be applied into instance
       ApprovalRules:
         PatchRules:
           - ApproveAfterDays: 0
-            ComplianceLevel: UNSPECIFIED
+            ComplianceLevel: UNSPECIFIED                        # Set level as UNSPECIFIED to scan all type of patches
             PatchFilterGroup:
               PatchFilters:
                 - Key: PRODUCT
                   Values:
-                    - !Ref WindowsOSVersion
-                - Key: CLASSIFICATION
+                    - !Ref WindowsOSVersion                     # Replacing the value from parameter values
+                - Key: CLASSIFICATION                           
                   Values: !Split
                     - ','
-                    - !Ref PatchClassification
+                    - !Ref PatchClassification                  # Replacing the value from parameter for classification
                 - Key: MSRC_SEVERITY
                   Values: !Split
                     - ','
-                    - !Ref PatchSeverity
+                    - !Ref PatchSeverity                        # Replacing the value from parameter for sevrity
       ApprovedPatchesComplianceLevel: UNSPECIFIED
       Tags:
         - Key: Name
@@ -310,6 +339,8 @@ Resources:
           Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
+
+# SSM Mantainance window to execute patching task         
   PatchInstallMaintenanceWindow:
     Type: AWS::SSM::MaintenanceWindow
     Properties:
@@ -321,11 +352,11 @@ Resources:
           - !Ref Environment
           - !Ref OperatingSystem
           - MaintenanceWindow
-      Schedule: !Sub cron(${PatchInstallMaintenanceWindowTime} ? * ${PatchInstallMaintainanceWindowDayOfWeek} * )
+      Schedule: !Sub cron(${PatchInstallMaintenanceWindowTime} ? * ${PatchInstallMaintainanceWindowDayOfWeek} * )           # Setting Cron expression from prameter values in stack page
       Duration: 2
       Cutoff: 1
       AllowUnassociatedTargets: false
-      ScheduleTimezone: !Ref ScheduleTimezone
+      ScheduleTimezone: !Ref ScheduleTimezone                     # timezone of the maintainance window from parameter value
       Tags:
         - Key: Name
           Value: !Join
@@ -350,6 +381,8 @@ Resources:
           Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
+
+# Maintainance window target for window tasks for patch instance          
   PatchInstallMaintenanceWindowTarget:
     Type: AWS::SSM::MaintenanceWindowTarget
     Properties:
@@ -378,6 +411,9 @@ Resources:
           - !Ref Environment
           - !Ref OperatingSystem
           - Maintainance Window Target
+
+  
+# Maintaince window task to execute with patch baseline        
   PatchInstallMaintenanceWindowTask:
     Type: AWS::SSM::MaintenanceWindowTask
     Properties:
@@ -414,6 +450,8 @@ Resources:
               - All
             NotificationType: Command
           ServiceRoleArn: !GetAtt PatchExecutionRole.Arn
+
+# Cloudwatch Log group for patch scan execution          
   PatchLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -450,6 +488,8 @@ Resources:
           Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
+
+# IAM Role for Lambda Function to execution of SSM, S3 and Cloudwatch Log Group          
   PatchLambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -474,7 +514,7 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              - Effect: Allow
+              - Effect: Allow                                     # Policy Statement for SSM Access to list Patch Baseline and Maintainance Window
                 Action:
                   - ssm:DescribePatchBaselines
                   - ssm:UpdatePatchBaseline
@@ -484,18 +524,20 @@ Resources:
                   - s3:GetObject
                   - s3:ListBucket
                 Resource: '*'
-              - Effect: Allow
+              - Effect: Allow                                     # Policy Statement for SSM Access to Cloudwatch LogGroup and Event on specific arn
                 Action:
                   - logs:PutLogEvents
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
-                Resource: arn:aws:logs:*:*:*
-              - Effect: Allow
+                Resource: !GetAtt PatchInstallLogGroup.Arn
+              - Effect: Allow                                     # Policy Statement for S3 Object on Specified Patch Bucket for exclusion of thier pacthes
                 Action:
                   - s3:GetObject
                   - s3:ListObject
                   - s3:ListBucket
                 Resource: !Sub arn:aws:s3:::${ProjectName}-${Environment}-windows-patch-install-s3-bucket
+
+# S3 Buckets for Lamdba to put up the patch-exclusion.json file with detail                
   PatchS3Bucket:
     DependsOn:
       - PatchLambdaFunction
@@ -510,6 +552,8 @@ Resources:
         LambdaConfigurations:
           - Event: s3:ObjectCreated:Put
             Function: !GetAtt PatchLambdaFunction.Arn
+
+# Configure trigger in Lamdba on S3 Events to trigger the function            
   LambdaInvokePermission:
     DependsOn:
       - PatchLambdaFunction
@@ -519,6 +563,8 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
       SourceArn: !Sub arn:aws:s3:::${ProjectName}-${Environment}-windows-patch-install-s3-bucket
+
+# Lambda Function to update the Patch Baseline for Windows Target for instance       
   PatchLambdaFunction:
     DependsOn:
       - PatchLambdaExecutionRole
@@ -683,7 +729,7 @@ Resources:
                   }
       Runtime: python3.9
       Timeout: 300
-      Environment:
+      Environment:                                                # Passing Env Varibale in Lambda Python Script to use the dynamic value of Patch Baseline and Target ID
         Variables:
           PATCH_S3_BUCKET: !Join
             - '-'
