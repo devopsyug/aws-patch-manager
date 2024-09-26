@@ -20,7 +20,6 @@ This system uses a tag-based instance selection mechanism, allowing for targeted
 graph TD
     A[CloudFormation Template] --> B[Custom Patch Baseline]
     B --> C[Tag-based Instance Selection]
-    C --> D1[Patch Scanning Task]
     C --> D2[Patch Installation Task]
     D1 --> E[Maintenance Window 1]
     D2 --> F[Maintenance Window 2]
