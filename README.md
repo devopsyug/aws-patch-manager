@@ -26,7 +26,8 @@ graph TD
     D2 --> F[Maintenance Window 2]
 
     G[S3 Bucket] --> H[Lambda Function]
-    H --> I[Update Patch Baseline and Instance Target]
-    I --> C
+    H --> I[Update Patch Baseline and Instance Target (Only for Installation)]
+    I --> D2
+
 
 ```    
