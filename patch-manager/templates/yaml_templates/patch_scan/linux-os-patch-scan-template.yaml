@@ -27,38 +27,48 @@ Metadata:
           - ScheduleTimezone
           - NotificationEmailAddress
 Parameters:
+  # ------------ Project Information Parameter  ---------------------
   AWSAccountID:
     Description: AWS Account ID of this Resources
     Type: String
     Default: '123456789'
+
   AccountOwner:
     Description: AWS Accont Owner of this Resources
     Type: String
-    Default: Chaitanya
+    Default: devopsyug
+  
   ProjectName:
-    Description: Client Project Name
+    Description: Client Project Name in small letter case
     Type: String
-    Default: che-demo
+    Default: devopsyug-demo
+
   Environment:
-    Description: Envoironment Name of Resource (ex. dev, stage, production)
+    Description: Envoironment Name of Resource (ex. dev, stage, production) in small letter case
     Type: String
     Default: dev
+
   RequestID:
     Description: Request ID of Task for this Resource
     Type: String
     Default: '123456'
+
   ApproverName:
-    Description: Approver Name for this Resource
+    Description: 'Approver Name for this Resource '
     Type: String
-    Default: Chaitanya
+    Default: devopsyug
+
+# --------------- Patch Configuation Parameter ---------------------   
   PatchScanMaintainanceWindowTime:
     Description: Patch SCAN MaintainanceWindow (MINUTE HOUR) eg. (00 09) -- 9:00 AM
+    ConstraintDescription: PatchScanMaintainanceWindowTime is Mandetory field to procced futher
     Type: String
     Default: 00 09
     MinLength: '1'
-    ConstraintDescription: PatchScanMaintainanceWindowTime is Mandetory field to procced futher
+    
   PatchScanMaintainanceWindowDayOfWeek:
     Description: MaintainanceWindow Day of teh Week eg. (MON, TUE, WED, THU, FRI, SAT, SUN) - Select * for Daily Execution
+    ConstraintDescription: MaintainanceWindowTime is Mandetory field to procced futher
     Type: String
     Default: SAT
     AllowedValues:
@@ -71,38 +81,47 @@ Parameters:
       - SUN
       - '*'
     MinLength: '1'
-    ConstraintDescription: MaintainanceWindowTime is Mandetory field to procced futher
+    
   OperatingSystem:
     Description: Server Operating System
+    ConstraintDescription: OperatingSystem is an Mandtory Field to Proceed Further
     Type: String
     AllowedValues:
       - AMAZON_LINUX_2022
       - AMAZON_LINUX_2023
     MinLength: '1'
-    ConstraintDescription: OperatingSystem is an Mandtory Field to Proceed Further
+
+
   PatchClassification:
     Description: Patching Classification for System { use * for all --(Supported Values - Security, Bugfix, Enhancement, Recommended, Newpackage)}
     Type: String
     Default: '*'
+
   PatchSeverity:
     Description: Patching Severity for Linux Operating System { use * for all -- (Supported Values - Critical, Important, Medium, Low)}
     Type: String
     Default: '*'
+
   PatchGroupName:
     Description: Patching Tag Value (Intance Specfied with key - PatchGroup)
     Type: String
     Default: LinuxOS-PatchScan
     AllowedValues:
       - LinuxOS-PatchScan
+
   ScheduleTimezone:
     Description: Patching Schedule time zone
     Type: String
     Default: Etc/UTC
+
   NotificationEmailAddress:
     Description: Notification Email Address for SNS Topic
+    ConstraintDescription: NotificationEmailAddress is an Mandtory Field to Proceed Further
     Type: String
     MinLength: '1'
-    ConstraintDescription: NotificationEmailAddress is an Mandtory Field to Proceed Further
+
+# Condition speciffied to select operating system product name according to supported values
+
 Conditions:
   IsAmazonLinux2022: !Equals
     - !Ref OperatingSystem
@@ -110,7 +129,10 @@ Conditions:
   IsAmazonLinux2023: !Equals
     - !Ref OperatingSystem
     - AMAZON_LINUX_2023
+
+# ----- Resource creation template for Patch manager
 Resources:
+# SNS Notifictaion topic for email trigger
   NotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -146,12 +168,16 @@ Resources:
           Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
+
+# SNS Subscription for SNS Topics            
   NotificationTopicSubscription:
     Type: AWS::SNS::Subscription
     Properties:
       Endpoint: !Ref NotificationEmailAddress
       Protocol: Email
       TopicArn: !Ref NotificationTopic
+
+# IAM Role for the Patch Execution Opertaion with SSM window      
   PatchExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -220,6 +246,8 @@ Resources:
           Value: !Ref ApproverName
         - Key: StackName
           Value: !Ref AWS::StackName
+
+# Custom patch baseline for instance patch groups           
   LinuxPatchScanBaseLine:
     Type: AWS::SSM::PatchBaseline
     Properties:
@@ -240,8 +268,9 @@ Resources:
           - !Ref ProjectName
           - !Ref OperatingSystem
       OperatingSystem: !Ref OperatingSystem
+
       PatchGroups:
-        - !Ref PatchGroupName
+        - !Ref PatchGroupName                         # Name of Patch Group and tag should be applied into instance
       ApprovalRules:
         PatchRules:
           - ApproveAfterDays: 0

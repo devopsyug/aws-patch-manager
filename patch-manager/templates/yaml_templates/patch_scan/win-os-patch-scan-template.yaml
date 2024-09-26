@@ -137,7 +137,7 @@ Parameters:
     ConstraintDescription: NotificationEmailAddress is an Mandetory Field to Proceed Further
     Type: String
     MinLength: '1'
-    
+# ----- Resource creation template for Patch manager    
 Resources:
 # SNS Notifictaion topic for email trigger
   NotificationTopic:
@@ -274,15 +274,13 @@ Resources:
           - !Ref ProjectName
           - !Ref Environment
           - !Ref OperatingSystem
-      OperatingSystem: !Ref OperatingSystem
-      # Name of Patch Group and tag should be applied into instance
+      OperatingSystem: !Ref OperatingSystem     
       PatchGroups:
-        - !Ref PatchGroupName
+        - !Ref PatchGroupName                     # Name of Patch Group and tag should be applied into instance
       ApprovalRules:
         PatchRules:
-          - ApproveAfterDays: 0
-          # set level as UNSPECIFIED to scan all type of patches
-            ComplianceLevel: UNSPECIFIED
+          - ApproveAfterDays: 0          
+            ComplianceLevel: UNSPECIFIED          # Set level as UNSPECIFIED to scan all type of patches
             PatchFilterGroup:
               PatchFilters:
                 - Key: PRODUCT
