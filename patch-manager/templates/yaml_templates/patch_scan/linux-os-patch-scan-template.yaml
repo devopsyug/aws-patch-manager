@@ -1,0 +1,411 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS SSM Patch Manager - Project Root#
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Project Information Parameter
+        Parameters:
+          - AWSAccountID
+          - AccountOwner
+          - ProjectName
+          - Environment
+          - RequestID
+          - ApproverName
+      - Label:
+          default: Recommended - Patch Config Details
+        Parameters:
+          - PatchGroupName
+          - OperatingSystem
+          - LinuxPatchClassification
+          - LinuxPatchSeverity
+          - PatchScanMaintainanceWindowTime
+          - PatchScanMaintainanceWindowDayOfWeek
+      - Label:
+          default: Custom Defined Values
+        Parameters:
+          - ScheduleTimezone
+          - NotificationEmailAddress
+Parameters:
+  AWSAccountID:
+    Description: AWS Account ID of this Resources
+    Type: String
+    Default: '123456789'
+  AccountOwner:
+    Description: AWS Accont Owner of this Resources
+    Type: String
+    Default: Chaitanya
+  ProjectName:
+    Description: Client Project Name
+    Type: String
+    Default: che-demo
+  Environment:
+    Description: Envoironment Name of Resource (ex. dev, stage, production)
+    Type: String
+    Default: dev
+  RequestID:
+    Description: Request ID of Task for this Resource
+    Type: String
+    Default: '123456'
+  ApproverName:
+    Description: Approver Name for this Resource
+    Type: String
+    Default: Chaitanya
+  PatchScanMaintainanceWindowTime:
+    Description: Patch SCAN MaintainanceWindow (MINUTE HOUR) eg. (00 09) -- 9:00 AM
+    Type: String
+    Default: 00 09
+    MinLength: '1'
+    ConstraintDescription: PatchScanMaintainanceWindowTime is Mandetory field to procced futher
+  PatchScanMaintainanceWindowDayOfWeek:
+    Description: MaintainanceWindow Day of teh Week eg. (MON, TUE, WED, THU, FRI, SAT, SUN) - Select * for Daily Execution
+    Type: String
+    Default: SAT
+    AllowedValues:
+      - MON
+      - TUE
+      - WED
+      - THU
+      - FRI
+      - SAT
+      - SUN
+      - '*'
+    MinLength: '1'
+    ConstraintDescription: MaintainanceWindowTime is Mandetory field to procced futher
+  OperatingSystem:
+    Description: Server Operating System
+    Type: String
+    AllowedValues:
+      - AMAZON_LINUX_2022
+      - AMAZON_LINUX_2023
+    MinLength: '1'
+    ConstraintDescription: OperatingSystem is an Mandtory Field to Proceed Further
+  PatchClassification:
+    Description: Patching Classification for System { use * for all --(Supported Values - Security, Bugfix, Enhancement, Recommended, Newpackage)}
+    Type: String
+    Default: '*'
+  PatchSeverity:
+    Description: Patching Severity for Linux Operating System { use * for all -- (Supported Values - Critical, Important, Medium, Low)}
+    Type: String
+    Default: '*'
+  PatchGroupName:
+    Description: Patching Tag Value (Intance Specfied with key - PatchGroup)
+    Type: String
+    Default: LinuxOS-PatchScan
+    AllowedValues:
+      - LinuxOS-PatchScan
+  ScheduleTimezone:
+    Description: Patching Schedule time zone
+    Type: String
+    Default: Etc/UTC
+  NotificationEmailAddress:
+    Description: Notification Email Address for SNS Topic
+    Type: String
+    MinLength: '1'
+    ConstraintDescription: NotificationEmailAddress is an Mandtory Field to Proceed Further
+Conditions:
+  IsAmazonLinux2022: !Equals
+    - !Ref OperatingSystem
+    - AMAZON_LINUX_2022
+  IsAmazonLinux2023: !Equals
+    - !Ref OperatingSystem
+    - AMAZON_LINUX_2023
+Resources:
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Join
+        - '-'
+        - - Patch
+          - Scan
+          - !Ref Environment
+          - !Ref ProjectName
+          - !Ref OperatingSystem
+          - SNSTopic
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - Patch
+              - Scan
+              - !Ref Environment
+              - !Ref ProjectName
+              - !Ref OperatingSystem
+              - SNSTopic
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: AWSAccountID
+          Value: !Ref AWSAccountID
+        - Key: AccountOwner
+          Value: !Ref AccountOwner
+        - Key: ProjectName
+          Value: !Ref ProjectName
+        - Key: RequestID
+          Value: !Ref RequestID
+        - Key: ApproverName
+          Value: !Ref ApproverName
+        - Key: StackName
+          Value: !Ref AWS::StackName
+  NotificationTopicSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref NotificationEmailAddress
+      Protocol: Email
+      TopicArn: !Ref NotificationTopic
+  PatchExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - '-'
+        - - Patch
+          - Scan
+          - !Ref Environment
+          - !Ref ProjectName
+          - !Ref OperatingSystem
+          - IAMRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ssm.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+            - '-'
+            - - Patch
+              - Scan
+              - !Ref Environment
+              - !Ref ProjectName
+              - !Ref OperatingSystem
+              - IAMPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:SendCommand
+                  - ssm:DescribeInstanceInformation
+                  - ssm:GetDocument
+                  - ssm:ListCommands
+                  - ssm:ListCommandInvocations
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                  - sns:Publish
+                  - iam:PassRole
+                Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - Patch
+              - Scan
+              - !Ref Environment
+              - !Ref ProjectName
+              - !Ref OperatingSystem
+              - IAMRole
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: AWSAccountID
+          Value: !Ref AWSAccountID
+        - Key: AccountOwner
+          Value: !Ref AccountOwner
+        - Key: ProjectName
+          Value: !Ref ProjectName
+        - Key: RequestID
+          Value: !Ref RequestID
+        - Key: ApproverName
+          Value: !Ref ApproverName
+        - Key: StackName
+          Value: !Ref AWS::StackName
+  LinuxPatchScanBaseLine:
+    Type: AWS::SSM::PatchBaseline
+    Properties:
+      Name: !Join
+        - '-'
+        - - Patch
+          - Scan
+          - !Ref Environment
+          - !Ref ProjectName
+          - !Ref OperatingSystem
+          - PatchBaseLine
+      Description: !Join
+        - '-'
+        - - Patch
+          - Scan
+          - PatchBaseline for
+          - !Ref Environment
+          - !Ref ProjectName
+          - !Ref OperatingSystem
+      OperatingSystem: !Ref OperatingSystem
+      PatchGroups:
+        - !Ref PatchGroupName
+      ApprovalRules:
+        PatchRules:
+          - ApproveAfterDays: 0
+            ComplianceLevel: UNSPECIFIED
+            EnableNonSecurity: true
+            PatchFilterGroup:
+              PatchFilters:
+                - Key: PRODUCT
+                  Values:
+                    - !If
+                      - IsAmazonLinux2022
+                      - AmazonLinux2022
+                      - !If
+                        - IsAmazonLinux2023
+                        - AmazonLinux2023
+                        - 'null'
+                - Key: CLASSIFICATION
+                  Values: !Split
+                    - ','
+                    - !Ref PatchClassification
+                - Key: SEVERITY
+                  Values: !Split
+                    - ','
+                    - !Ref PatchSeverity
+      ApprovedPatchesComplianceLevel: UNSPECIFIED
+      ApprovedPatchesEnableNonSecurity: true
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - Patch
+              - Scan
+              - !Ref Environment
+              - !Ref ProjectName
+              - !Ref OperatingSystem
+              - PatchBaseLine
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: AWSAccountID
+          Value: !Ref AWSAccountID
+        - Key: AccountOwner
+          Value: !Ref AccountOwner
+        - Key: ProjectName
+          Value: !Ref ProjectName
+        - Key: RequestID
+          Value: !Ref RequestID
+        - Key: ApproverName
+          Value: !Ref ApproverName
+        - Key: StackName
+          Value: !Ref AWS::StackName
+  PatchScanMaintenanceWindow:
+    Type: AWS::SSM::MaintenanceWindow
+    Properties:
+      Name: !Join
+        - '-'
+        - - Patch
+          - Scan
+          - !Ref Environment
+          - !Ref ProjectName
+          - !Ref OperatingSystem
+          - MaintenanceWindow
+      Schedule: !Sub cron(${PatchScanMaintainanceWindowTime} ? * ${PatchScanMaintainanceWindowDayOfWeek} * )
+      Duration: 2
+      Cutoff: 1
+      AllowUnassociatedTargets: false
+      ScheduleTimezone: !Ref ScheduleTimezone
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - Patch
+              - Scan
+              - !Ref Environment
+              - !Ref ProjectName
+              - !Ref OperatingSystem
+              - MaintenanceWindow
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: AWSAccountID
+          Value: !Ref AWSAccountID
+        - Key: AccountOwner
+          Value: !Ref AccountOwner
+        - Key: ProjectName
+          Value: !Ref ProjectName
+        - Key: RequestID
+          Value: !Ref RequestID
+        - Key: ApproverName
+          Value: !Ref ApproverName
+        - Key: StackName
+          Value: !Ref AWS::StackName
+  PatchScanMaintenanceWindowTarget:
+    Type: AWS::SSM::MaintenanceWindowTarget
+    Properties:
+      WindowId: !Ref PatchScanMaintenanceWindow
+      ResourceType: INSTANCE
+      Targets:
+        - Key: tag:PatchGroup
+          Values:
+            - !Ref PatchGroupName
+        - Key: tag:Environment
+          Values:
+            - !Ref Environment
+      OwnerInformation: Patch Scan Maintainance Window Target for Instance
+  PatchScanMaintenanceWindowTask:
+    Type: AWS::SSM::MaintenanceWindowTask
+    Properties:
+      Priority: 1
+      MaxConcurrency: '1'
+      MaxErrors: '1'
+      WindowId: !Ref PatchScanMaintenanceWindow
+      TaskArn: AWS-RunPatchBaseline
+      ServiceRoleArn: !GetAtt PatchExecutionRole.Arn
+      Targets:
+        - Key: WindowTargetIds
+          Values:
+            - !Ref PatchScanMaintenanceWindowTarget
+      TaskType: RUN_COMMAND
+      TaskInvocationParameters:
+        MaintenanceWindowRunCommandParameters:
+          Parameters:
+            Operation:
+              - Scan
+          CloudWatchOutputConfig:
+            CloudWatchLogGroupName: !Ref PatchScanLogGroup
+            CloudWatchOutputEnabled: true
+          NotificationConfig:
+            NotificationArn: !Ref NotificationTopic
+            NotificationEvents:
+              - All
+            NotificationType: Command
+          ServiceRoleArn: !GetAtt PatchExecutionRole.Arn
+  PatchScanLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join
+        - /
+        - - /aws/ssm/
+          - !Ref Environment
+          - !Ref ProjectName
+          - !Ref OperatingSystem
+          - PatchScan
+          - OperationLogs
+      RetentionInDays: 30
+      Tags:
+        - Key: Name
+          Value: !Join
+            - /
+            - - /aws/ssm/
+              - !Ref Environment
+              - !Ref ProjectName
+              - !Ref OperatingSystem
+              - PatchScan
+              - OperationLogs
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: AWSAccountID
+          Value: !Ref AWSAccountID
+        - Key: AccountOwner
+          Value: !Ref AccountOwner
+        - Key: ProjectName
+          Value: !Ref ProjectName
+        - Key: RequestID
+          Value: !Ref RequestID
+        - Key: ApproverName
+          Value: !Ref ApproverName
+        - Key: StackName
+          Value: !Ref AWS::StackName

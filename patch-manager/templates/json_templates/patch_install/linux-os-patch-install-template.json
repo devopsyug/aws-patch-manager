@@ -1,0 +1,614 @@
+{
+     "AWSTemplateFormatVersion" : "2010-09-09",
+  
+    "Description" : "AWS SSM Patch Manager - Project Root#",
+        "Metadata" : {
+        "AWS::CloudFormation::Interface" : {
+        "ParameterGroups" : [
+        {
+            "Label" : { "default" : "Project Information Parameter" },
+            "Parameters" : [ "AWSAccountID", "AccountOwner", "ProjectName", "Environment", "RequestID", "ApproverName" ]
+        },        
+        {
+          "Label" : { "default" : "Recommended - Patch Config Details" },
+          "Parameters" : [ "PatchGroupName", "OperatingSystem", "LinuxPatchClassification", "LinuxPatchSeverity", "PatchScanMaintainanceWindowTime", "PatchScanMaintainanceWindowDayOfWeek"]
+        },
+        {
+            "Label" : { "default" : "Recommended Mandetory Fields" },
+            "Parameters" : ["OperatingSystem", "NotificationEmailAddress" ]
+        }
+        ]
+      }
+     },
+     
+      "Parameters" : {     
+        
+        "AWSAccountID" : {
+            "Description" : "AWS Account ID of this Resources",
+            "Type" : "String",
+            "Default" : "123456789"
+          },
+
+        "AccountOwner" : {
+            "Description" : "AWS Accont Owner of this Resources",
+            "Type" : "String",
+            "Default" : "Chaitanya"
+          },
+
+        "ProjectName" : {
+            "Description" : "Client Project Name",
+            "Type" : "String",
+            "Default" : "demo"
+          },
+
+        "Environment" : {
+            "Description" : "Envoironment Name of Resource (ex. dev, stage, production)",
+            "Type" : "String",
+            "Default" : "dev"
+          },
+
+        "RequestID" : {
+            "Description" : "Request ID of Task for this Resource",
+            "Type" : "String",
+            "Default" : "123456"
+          },
+
+        "ApproverName" : {
+            "Description" : "Approver Name for this Resource",
+            "Type" : "String",
+            "Default" : "Chaitanya"
+          },
+
+        "PatchInstallMaintenanceWindowTime" : {
+            "Description" : "Patch Install MaintainanceWindow (MINUTE HOUR) eg. (00 09) -- 9:00 AM",
+               "Type" : "String",
+               "Default" : "00 09",
+               "MinLength": "1",
+               "ConstraintDescription": "PatchInstallMaintenanceWindowTime is Mandetory field to procced futher"               
+          },          
+          
+          "PatchInstallMaintainanceWindowDayOfWeek" : {
+            "Description" : "MaintainanceWindow Day of teh Week eg. (MON, TUE, WED, THU, FRI, SAT, SUN). Select * for Daily Execution" ,
+               "Type" : "String",
+               "Default" : "SAT",
+               "AllowedValues": ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN", "*"],
+               "MinLength": "1",
+               "ConstraintDescription": "MaintainanceWindowTime is Mandetory field to procced futher"               
+          },
+
+          "OperatingSystem" : {
+            "Description" : "Server Operating System",
+            "Type" : "String",
+            "AllowedValues": ["AMAZON_LINUX_2022",  "AMAZON_LINUX_2023"],
+            "MinLength": "1",
+            "ConstraintDescription": "OperatingSystem is an Mandtory Field to Proceed Further" 
+          },
+
+
+          "PatchClassification" : {
+                "Description" : "Patching Classification for System (Supported Values - { use * for All} Security, Bugfix, Enhancement, Recommended, Newpackage)",
+                "Type" : "String",
+                "Default" : "*"
+          },
+
+          "RejectedPatches": {
+            "Description" : "Rejects Patches Name with Comma",
+            "Type" : "String",
+            "Default" : ""
+          },
+        
+     
+          "PatchSeverity" : {
+              "Description" : "Patching Severity for Linux Operating System (Supported Values - Critical, Important, Medium, Low)",
+              "Type" : "String",
+              "Default" : "*"
+          },
+
+          "PatchGroupName" : {
+                "Description" : "Patching Tag Value (Intance Specfied with key - PatchGroup)",
+                "Type" : "String",
+                "Default" : "LinuxOS-PatchInstall",
+                "AllowedValues": ["LinuxOS-PatchInstall"]
+          },
+
+          "ScheduleTimezone" : {
+              "Description" : "Patching Schedule time zone",
+              "Type" : "String",
+              "Default" : "Etc/UTC",
+              "AllowedValues": ["Etc/UTC"]
+          },
+
+          "NotificationEmailAddress" : {
+            "Description" : "Notification Email Address for SNS Topic",
+            "Type" : "String",
+            "MinLength": "1",
+            "ConstraintDescription": "NotificationEmailAddress is an Mandtory Field to Proceed Further"               
+          }          
+        },
+		
+		 "Conditions": {
+        "IsAmazonLinux2022": {"Fn::Equals": [{"Ref": "OperatingSystem"}, "AMAZON_LINUX_2022"]},
+        "IsAmazonLinux2023": {"Fn::Equals": [{"Ref": "OperatingSystem"}, "AMAZON_LINUX_2023"]},
+        "HasRejectedPatches": {"Fn::Not":   [{ "Fn::Equals": [{"Ref": "RejectedPatches"}, ""]}]}
+       },
+
+
+"Resources" : {
+
+        "NotificationTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+              "TopicName": { "Fn::Join": [ "-", ["Patch", "Install", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "SNSTopic"]]},
+              "Tags": [
+                {"Key" : "Name", "Value" : { "Fn::Join": [ "-", ["Patch", "Install", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "SNSTopic"]]}},
+                {"Key" : "Environment", "Value" : {"Ref" : "Environment"}},
+                {"Key" : "AWSAccountID", "Value" : {"Ref" : "AWSAccountID"}},
+                {"Key" : "AccountOwner", "Value" : {"Ref" : "AccountOwner"}},
+                {"Key" : "ProjectName", "Value" : {"Ref" : "ProjectName"}},
+                {"Key" : "RequestID", "Value" : {"Ref" : "RequestID"}},
+                {"Key" : "ApproverName", "Value" : {"Ref" : "ApproverName"}},
+                {"Key" : "StackName", "Value" : {"Ref" : "AWS::StackName"}}
+              ]
+            }
+          },
+
+        "NotificationTopicSubscription" : {
+          "Type" : "AWS::SNS::Subscription",
+          "Properties" : {
+            "Endpoint" : {"Ref": "NotificationEmailAddress"},
+            "Protocol" : "Email",
+            "TopicArn" : {"Ref": "NotificationTopic"}
+          }
+        },
+
+        "PatchExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "RoleName": { "Fn::Join": [ "-", ["Patch", "Install", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "IAMRole"]]},
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                    "Service": [
+                        "ssm.amazonaws.com"
+                    ]
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+                ]
+            },
+              "Policies": [
+                {
+                "PolicyName": { "Fn::Join": [ "-", ["Patch", "Install", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "IAMPolicy"]]},
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "ssm:SendCommand",
+                            "ssm:DescribeInstanceInformation",
+                            "ssm:GetDocument",
+                            "ssm:ListCommands",
+                            "ssm:ListCommandInvocations",
+                            "logs:CreateLogStream",
+                            "logs:PutLogEvents",
+                            "logs:DescribeLogStreams",
+                            "sns:Publish",
+                            "iam:PassRole"
+                        ],
+                        "Resource": "*"
+                    }
+                    ]
+                }
+                }
+            ],
+            "Tags": [
+              {"Key" : "Name", "Value" : { "Fn::Join": [ "-", ["Patch", "Install", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "IAMRole"]]}},
+              {"Key" : "Environment", "Value" : {"Ref" : "Environment"}},
+              {"Key" : "AWSAccountID", "Value" : {"Ref" : "AWSAccountID"}},
+              {"Key" : "AccountOwner", "Value" : {"Ref" : "AccountOwner"}},
+              {"Key" : "ProjectName", "Value" : {"Ref" : "ProjectName"}},
+              {"Key" : "RequestID", "Value" : {"Ref" : "RequestID"}},
+              {"Key" : "ApproverName", "Value" : {"Ref" : "ApproverName"}},
+              {"Key" : "StackName", "Value" : {"Ref" : "AWS::StackName"}}            
+            ]
+            }
+        },
+
+
+        "LinuxPatchInstallBaseLine" :  {
+             "Type" : "AWS::SSM::PatchBaseline",
+               "Properties" : {
+                "Name" : { "Fn::Join": [ "-", ["Patch", "Install", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "PatchBaseLine"]]},
+                "Description" : { "Fn::Join": [ "-", ["Patch", "Install", "PatchBaseline for", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}]]},
+                 "OperatingSystem" : { "Ref" : "OperatingSystem" },
+                 "RejectedPatchesAction": "BLOCK",
+                 "RejectedPatches": { "Fn::If": ["HasRejectedPatches", {"Fn::Split": [",", {"Ref": "RejectedPatches"}] }, {"Ref": "AWS::NoValue" }]
+                },
+                "PatchGroups" : [{"Ref" : "PatchGroupName"}],
+                 "ApprovalRules" : {
+                        "PatchRules" : [ {
+                            "ApproveAfterDays" : 0,
+                            "ComplianceLevel" : "UNSPECIFIED",
+                            "EnableNonSecurity" : true,
+                            "PatchFilterGroup" : {
+                                "PatchFilters" : [ {
+                                    "Key" : "PRODUCT",
+                                    "Values" : [
+                                      {
+                                        "Fn::If": [
+                                          "IsAmazonLinux2022",
+                                          "AmazonLinux2022",
+                                          {
+                                            "Fn::If": [
+                                              "IsAmazonLinux2023",
+                                              "AmazonLinux2023",
+                                              "null"
+                                              
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                    },
+                                    {
+                                        "Key" : "CLASSIFICATION",
+                                        "Values" : { "Fn::Split" : [",", {"Ref": "PatchClassification"}]}
+                                        
+                                    },
+                                    {
+                                      "Key" : "SEVERITY",
+                                      "Values" : { "Fn::Split" : [",", {"Ref": "PatchSeverity"}]}
+                                    }                                    
+                                ]
+                              }
+                          } ]
+                  },              
+                 "ApprovedPatchesComplianceLevel" : "UNSPECIFIED",
+                 "ApprovedPatchesEnableNonSecurity" : true,
+                 "Tags": [
+                  {"Key" : "Name", "Value" : { "Fn::Join": [ "-", ["Patch", "Install", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "PatchBaseLine"]]}},
+                  {"Key" : "Environment", "Value" : {"Ref" : "Environment"}},
+                  {"Key" : "AWSAccountID", "Value" : {"Ref" : "AWSAccountID"}},
+                  {"Key" : "AccountOwner", "Value" : {"Ref" : "AccountOwner"}},
+                  {"Key" : "ProjectName", "Value" : {"Ref" : "ProjectName"}},
+                  {"Key" : "RequestID", "Value" : {"Ref" : "RequestID"}},
+                  {"Key" : "ApproverName", "Value" : {"Ref" : "ApproverName"}},
+                  {"Key" : "StackName", "Value" : {"Ref" : "AWS::StackName"}}            
+                ]
+                 
+               }
+           },
+
+          "PatchInstallMaintenanceWindow": {
+            "Type": "AWS::SSM::MaintenanceWindow",
+            "Properties": {
+              "Name": { "Fn::Join": [ "-", ["Patch", "Install", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "MaintenanceWindow"]]},
+              "Schedule": { "Fn::Sub": "cron(${PatchInstallMaintenanceWindowTime} ? * ${PatchInstallMaintainanceWindowDayOfWeek} * )"},
+              "Duration": 2,
+              "Cutoff": 1,
+              "AllowUnassociatedTargets": false,
+              "ScheduleTimezone": { "Ref": "ScheduleTimezone"},
+              "Tags": [
+                {"Key" : "Name", "Value" : { "Fn::Join": [ "-", ["Patch", "Install", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "MaintenanceWindow"]]}},
+                {"Key" : "Environment", "Value" : {"Ref" : "Environment"}},
+                {"Key" : "AWSAccountID", "Value" : {"Ref" : "AWSAccountID"}},
+                {"Key" : "AccountOwner", "Value" : {"Ref" : "AccountOwner"}},
+                {"Key" : "ProjectName", "Value" : {"Ref" : "ProjectName"}},
+                {"Key" : "RequestID", "Value" : {"Ref" : "RequestID"}},
+                {"Key" : "ApproverName", "Value" : {"Ref" : "ApproverName"}},
+                {"Key" : "StackName", "Value" : {"Ref" : "AWS::StackName"}}            
+              ]
+            }
+          },
+
+
+          "PatchInstallMaintenanceWindowTarget": {
+            "Type": "AWS::SSM::MaintenanceWindowTarget",
+            "Properties": {
+              "WindowId": {
+                "Ref": "PatchInstallMaintenanceWindow"
+              },
+              "ResourceType": "INSTANCE",
+              "Targets": [
+                {
+                  "Key": "tag:PatchGroup",
+                  "Values": [
+                    { "Ref": "PatchGroupName"}
+                  ]
+                },
+                {
+                  "Key": "tag:Environment",
+                  "Values": [
+                    { "Ref": "Environment"}
+                  ]
+                }
+              ],
+              "OwnerInformation": "Patch Install MaintainanceWindow Target for Instance"
+            }
+          },          
+
+      "PatchInstallMaintenanceWindowTask": {
+        "Type": "AWS::SSM::MaintenanceWindowTask",
+        "Properties": {
+            "Priority": 1,
+            "MaxConcurrency": "1",
+            "MaxErrors": "1",   
+            "WindowId": {
+            "Ref": "PatchInstallMaintenanceWindow"
+        },
+        "TaskArn": "AWS-RunPatchBaseline",
+        "ServiceRoleArn": {
+            "Fn::GetAtt": [
+            "PatchExecutionRole",
+            "Arn"
+            ]
+        },
+        "Targets": [
+            {
+            "Key": "WindowTargetIds",
+            "Values": [
+                {
+                "Ref": "PatchInstallMaintenanceWindowTarget"
+                }
+            ]
+            }
+        ],
+
+      "TaskType": "RUN_COMMAND",
+      "TaskInvocationParameters": {
+        "MaintenanceWindowRunCommandParameters": {
+          "Parameters": {
+            "Operation": [
+              "Install"
+            ]
+          },
+          "CloudWatchOutputConfig": {
+            "CloudWatchLogGroupName": {
+              "Ref": "PatchInstallLogGroup"
+            },
+            "CloudWatchOutputEnabled": true
+          },
+            "NotificationConfig": {
+                "NotificationArn": { "Ref": "NotificationTopic"},
+                "NotificationEvents": ["All"],
+                "NotificationType": "Command"
+            },
+            "ServiceRoleArn": {
+                "Fn::GetAtt": [
+                "PatchExecutionRole",
+                "Arn"
+                ]
+            }           
+        }
+      }
+    }
+  },
+
+
+      "PatchInstallLogGroup": {
+        "Type": "AWS::Logs::LogGroup",
+        "Properties": {
+          "LogGroupName": { "Fn::Join": [ "/", ["/aws/ssm/", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "PatchInstall", "OperationLogs"]]},
+          "RetentionInDays": 30,
+          "Tags": [
+            {"Key" : "Name", "Value" : { "Fn::Join": [ "/", ["/aws/ssm/", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "PatchInstall", "OperationLogs"]]}},
+            {"Key" : "Environment", "Value" : {"Ref" : "Environment"}},
+            {"Key" : "AWSAccountID", "Value" : {"Ref" : "AWSAccountID"}},
+            {"Key" : "AccountOwner", "Value" : {"Ref" : "AccountOwner"}},
+            {"Key" : "ProjectName", "Value" : {"Ref" : "ProjectName"}},
+            {"Key" : "RequestID", "Value" : {"Ref" : "RequestID"}},
+            {"Key" : "ApproverName", "Value" : {"Ref" : "ApproverName"}},
+            {"Key" : "StackName", "Value" : {"Ref" : "AWS::StackName"}}
+          ]
+        }
+      },
+
+    "PatchLambdaExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+            "RoleName": { "Fn::Join": [ "-", ["Patch", "Install", { "Ref": "Environment"}, {"Ref": "ProjectName"}, "IAMRole"]]},
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [{
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "lambda.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                    }]
+                },
+                "Policies": [{
+                    "PolicyName": "PatchLambdaPolicy",
+                    "PolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [{
+                            "Effect": "Allow",
+                            "Action": [
+                                "ssm:DescribePatchBaselines",
+                                "ssm:UpdatePatchBaseline",
+                                "ssm:DescribeMaintenanceWindows",
+                                "ssm:DescribeMaintenanceWindowTargets",
+                                "ssm:UpdateMaintenanceWindowTarget",
+                                "s3:GetObject",
+                                "s3:ListBucket"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "logs:PutLogEvents",
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream"
+                        ],
+                            "Resource": "arn:aws:logs:*:*:*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                            "s3:GetObject",
+                            "s3:ListObject",
+                            "s3:ListBucket"
+                            ],
+                            "Resource": {
+                              "Fn::Sub": "arn:aws:s3:::${ProjectName}-${Environment}-linux-patch-install-s3-bucket/*"
+                            }
+                        }                                                
+                      ]
+                    }
+                }]
+            }
+        },
+        
+        "PatchS3Bucket": {
+          "DependsOn": ["PatchLambdaFunction"],
+          "Type": "AWS::S3::Bucket",
+          "Properties": {
+              "BucketName": { "Fn::Join": ["-", [{ "Ref": "ProjectName" }, { "Ref": "Environment" }, "linux-patch-install-s3-bucket" ]] },
+              "NotificationConfiguration": {
+               "LambdaConfigurations": [
+                  {
+                    "Event": "s3:ObjectCreated:Put",
+                    "Function": { "Fn::GetAtt": ["PatchLambdaFunction", "Arn"]}
+                  }
+               ]
+            }
+          }
+      },
+
+      "LambdaInvokePermission": {
+          "DependsOn" : ["PatchLambdaFunction"],
+          "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": ["PatchLambdaFunction", "Arn"]
+                },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "s3.amazonaws.com",
+              "SourceArn": { "Fn::Sub": "arn:aws:s3:::${ProjectName}-${Environment}-linux-patch-install-s3-bucket" }
+            }
+          },
+
+      "PatchLambdaFunction": {
+            "DependsOn": ["PatchLambdaExecutionRole"],
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "FunctionName" : { "Fn::Join": ["-", ["Patch", "Install", { "Ref": "ProjectName" }, { "Ref": "Environment" }, {"Ref": "OperatingSystem"}, "function" ]] },
+                "Handler": "index.lambda_handler",
+                "Role": {
+                    "Fn::GetAtt": ["PatchLambdaExecutionRole", "Arn"]
+                },
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "",
+                            [
+                              "import boto3\n",
+                              "import json\n",
+                              "import logging\n",
+                              "import os\n",
+                              "\n",
+                              "# Configure logging\n",
+                              "logging.basicConfig(level=logging.INFO)\n",
+                              "logger = logging.getLogger()\n",
+                              "\n",
+                              "def lambda_handler(event, context):\n",
+                              "    s3 = boto3.client('s3')\n",
+                              "    ssm = boto3.client('ssm')\n",
+                              "    bucket_name = os.environ['PATCH_S3_BUCKET']\n",
+                              "    file_key = 'patch-exclusions.json'\n",
+                              "    \n",
+                              "    response = s3.get_object(Bucket=bucket_name, Key=file_key)\n",
+                              "    patch_info = json.loads(response['Body'].read().decode('utf-8'))\n",
+                              "    logger.info('Successfully fetched patch exclusions from S3')\n",
+                              "    \n",
+                              "    # If instance_id is passed via event, use it\n",
+                              "    if 'instance_id' in event:\n",
+                              "        instance_id = event['instance_id']\n",
+                              "    else:\n",
+                              "        # If instance_id is not passed in event, try to extract it from the S3 data\n",
+                              "        if len(patch_info.keys()) == 1:\n",
+                              "            instance_id = list(patch_info.keys())[0]\n",
+                              "        else:\n",
+                              "            logger.error('Missing instance_id in event data and cannot infer it from S3 file')\n",
+                              "            return {\n",
+                              "                'statusCode': 400,\n",
+                              "                'body': 'Missing instance_id in event data and cannot infer it from S3 file'\n",
+                              "            }\n",
+                              "    \n",
+                              "    patches_to_exclude = patch_info.get(instance_id, {}).get('exclude_patches', [])\n",
+                              "    maintenance_window_cron = patch_info.get(instance_id, {}).get('maintenance_window', None)\n",
+                              "    \n",
+                              "    if not patches_to_exclude:\n",
+                              "        logger.info(f'No patches to exclude for instance {instance_id}')\n",
+                              "        return {\n",
+                              "            'statusCode': 400,\n",
+                              "            'body': f'No patches to exclude for instance {instance_id}'\n",
+                              "        }\n",
+                              "    \n",
+                              "    response = ssm.describe_patch_baselines(\n",
+                              "        Filters=[\n",
+                              "            {\n",
+                              "                'Key': 'NAME_PREFIX',\n",
+                              "                'Values': [os.environ['PATCH_BASELINE_NAME']]\n",
+                              "            }\n",
+                              "        ]\n",
+                              "    )\n",
+                              "    patch_baseline_id = response['BaselineIdentities'][0]['BaselineId']\n",
+                              "    ssm.update_patch_baseline(\n",
+                              "        BaselineId=patch_baseline_id,\n",
+                              "        RejectedPatches=patches_to_exclude\n",
+                              "    )\n",
+                              "    logger.info(f'Updated patch baseline {patch_baseline_id} with patches to exclude for instance {instance_id}')\n",
+                              "    \n",
+                              "    maintenance_window_id = os.environ['MAINTAINANCE_WINDOW_ID']\n",
+                              "    target_id = os.environ['MAINTAINANCE_WINDOW_TARGET_ID']\n",
+                              "    \n",
+                              "    ssm.update_maintenance_window_target(\n",
+                              "        WindowId=maintenance_window_id,\n",
+                              "        WindowTargetId=target_id,\n",
+                              "        Targets=[\n",
+                              "            {\n",
+                              "                'Key': 'InstanceIds',\n",
+                              "                'Values': [instance_id]\n",
+                              "            }\n",
+                              "        ]\n",
+                              "    )\n",
+                              "    logger.info(f'Updated maintenance window target {target_id} for instance {instance_id}')\n",
+                              "    \n",
+                              "    return {\n",
+                              "        'statusCode': 200,\n",
+                              "        'body': f'Updated patch baseline {patch_baseline_id} and maintenance window target {target_id} for instance {instance_id}'\n",
+                              "    }\n"
+                            ]
+                          ]
+                    }
+                },
+                "Runtime": "python3.9",
+                "Timeout": 300,
+                "Environment": {
+                  "Variables": {
+                  "PATCH_S3_BUCKET": {
+                     "Fn::Join": ["-", [{ "Ref": "ProjectName" }, { "Ref": "Environment" }, "linux-patch-install-s3-bucket" ]]
+                  },
+                  "PATCH_BASELINE_NAME": 
+                  { "Fn::Join": [ "-", ["Patch", "Install", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "PatchBaseLine"]]},
+
+                  "MAINTAINANCE_WINDOW_ID": {
+                    "Ref": "PatchInstallMaintenanceWindow"
+                  },
+                  "MAINTAINANCE_WINDOW_TARGET_ID": {
+                    "Ref": "PatchInstallMaintenanceWindowTarget"
+                  }
+                }
+              }
+            }
+        }
+
+        
+      }
+}
