@@ -16,7 +16,7 @@ This system uses a tag-based instance selection mechanism, allowing for targeted
 
 ## Architecture
 
-```
+```mermaid
 graph TD
     A[CloudFormation Template] --> B[Custom Patch Baseline]
     B --> C[Tag-based Instance Selection]
