@@ -18,14 +18,17 @@ This system uses a tag-based instance selection mechanism, allowing for targeted
 
 ```mermaid
 graph TD
-    A[CloudFormation Template] --> B[Custom Patch Baseline]
-    B --> C[Tag-based Instance Selection]
-    C --> D2[Patch Installation Task]
-    D2 --> F[Maintenance Window 2]
-
-    G[S3 Bucket] --> H[Lambda Function]
-    H --> I[Update Patch Baseline and Instance Target]
-    I --> C
-
+    A[CloudFormation Template] --> B[Baseline]
+    B[Baseline] --> J[Patch Group Name]
+    A[CloudFormation Template] --> C[Maintainace Window]
+    A[CloudFormation Template] --> D[Lambda Function]
+    A[CloudFormation Template] --> E[S3 Bucket]
+    C[Maintainace Window] --> F[Maintainace Window Target]
+    F[Maintainace Window Target] --> G[Instance Tags Selection]
+    D[Lambda Function] --> H[InstanceID Base Selection]
+    H[InstanceID Base Selection] --> F[Maintainace Window Target]
+    E[S3 Bucket] --> D[Lambda Function]
+    G[Instance Tags Selection] --> I[Instance Servers for Patch]
+    J[Patch Group Name] --> F[Maintainace Window Target]
 
 ```    
