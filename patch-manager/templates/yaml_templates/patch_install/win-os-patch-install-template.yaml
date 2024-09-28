@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: AWS SSM Patch Manager - Project Root#
+Description: AWS SSM Patch Manager - Windows OS Patch Install Baseline
 Metadata:
   AWS::CloudFormation::Interface:
 # --------------- Parameter Groups for multiple defined parameter -----------------  
