@@ -502,7 +502,7 @@ Resources:
                   - logs:PutLogEvents
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
-                Resource: !GetAtt PatchInstallLogGroup.Arn
+                Resource: '*'
               - Effect: Allow                                           # Policy Statement for S3 Object on Specified Patch Bucket for exclusion of thier pacthes
                 Action:
                   - s3:GetObject
