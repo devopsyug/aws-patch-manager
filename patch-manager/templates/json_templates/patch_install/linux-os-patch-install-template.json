@@ -519,20 +519,28 @@
                               "import logging\n",
                               "import os\n",
                               "\n",
+                              
+
                               "# Configure logging\n",
                               "logging.basicConfig(level=logging.INFO)\n",
                               "logger = logging.getLogger()\n",
                               "\n",
+
+
                               "def lambda_handler(event, context):\n",
                               "    s3 = boto3.client('s3')\n",
                               "    ssm = boto3.client('ssm')\n",
                               "    bucket_name = os.environ['PATCH_S3_BUCKET']\n",
                               "    file_key = 'patch-exclusions.json'\n",
                               "    \n",
+
+
                               "    response = s3.get_object(Bucket=bucket_name, Key=file_key)\n",
                               "    patch_info = json.loads(response['Body'].read().decode('utf-8'))\n",
                               "    logger.info('Successfully fetched patch exclusions from S3')\n",
                               "    \n",
+
+
                               "    # If instance_id is passed via event, use it\n",
                               "    if 'instance_id' in event:\n",
                               "        instance_id = event['instance_id']\n",
@@ -547,9 +555,12 @@
                               "                'body': 'Missing instance_id in event data and cannot infer it from S3 file'\n",
                               "            }\n",
                               "    \n",
+
+
                               "    patches_to_exclude = patch_info.get(instance_id, {}).get('exclude_patches', [])\n",
-                              "    maintenance_window_cron = patch_info.get(instance_id, {}).get('maintenance_window', None)\n",
                               "    \n",
+
+
                               "    if not patches_to_exclude:\n",
                               "        logger.info(f'No patches to exclude for instance {instance_id}')\n",
                               "        return {\n",
@@ -557,6 +568,8 @@
                               "            'body': f'No patches to exclude for instance {instance_id}'\n",
                               "        }\n",
                               "    \n",
+
+
                               "    response = ssm.describe_patch_baselines(\n",
                               "        Filters=[\n",
                               "            {\n",
@@ -565,16 +578,24 @@
                               "            }\n",
                               "        ]\n",
                               "    )\n",
+
+
                               "    patch_baseline_id = response['BaselineIdentities'][0]['BaselineId']\n",
                               "    ssm.update_patch_baseline(\n",
                               "        BaselineId=patch_baseline_id,\n",
                               "        RejectedPatches=patches_to_exclude\n",
                               "    )\n",
+
+
                               "    logger.info(f'Updated patch baseline {patch_baseline_id} with patches to exclude for instance {instance_id}')\n",
                               "    \n",
+
+
                               "    maintenance_window_id = os.environ['MAINTAINANCE_WINDOW_ID']\n",
                               "    target_id = os.environ['MAINTAINANCE_WINDOW_TARGET_ID']\n",
                               "    \n",
+
+
                               "    ssm.update_maintenance_window_target(\n",
                               "        WindowId=maintenance_window_id,\n",
                               "        WindowTargetId=target_id,\n",
@@ -585,8 +606,12 @@
                               "            }\n",
                               "        ]\n",
                               "    )\n",
+
+
                               "    logger.info(f'Updated maintenance window target {target_id} for instance {instance_id}')\n",
                               "    \n",
+
+                              
                               "    return {\n",
                               "        'statusCode': 200,\n",
                               "        'body': f'Updated patch baseline {patch_baseline_id} and maintenance window target {target_id} for instance {instance_id}'\n",
