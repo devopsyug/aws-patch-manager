@@ -580,9 +580,10 @@
                 "Timeout": 300,
                 "Environment": {
                   "Variables": {
-                      "JIRA_URL": "https://devopsyug.atlassian.net",
-                      "JIRA_USERNAME": "devopsyug@gmail.com",
-                      "JIRA_API_TOKEN": "ATATT3xFfGF04cE80vuG2a69Ya9dBLMrq-3Ogc9V-ZZ3S87FSiRv5Znghb3ssq3Y34ptzNyHh_r-ATRtAWR73MS22mFJWK8G9tVKLzvIk5f7KS1nPE9EkjNB-0Vovq-Pd7_cLWrv25YOlbTkS_WGU5MqwiI925ao3sO8E-YvNBU5-xhLMld68vg=1D3FE43A"
+                      "JIRA_URL": {"Ref": "JiraUrl"},
+                      "JIRA_USERNAME": {"Ref": "JiraUsername"},
+                      "JIRA_PROJECT" : "DEV",
+                      "JIRA_API_TOKEN": {"Ref": "JiraApiToken"}
                     } 
                   }
 
