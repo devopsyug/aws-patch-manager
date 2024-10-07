@@ -11,12 +11,17 @@
         },        
         {
           "Label" : { "default" : "Recommended - Patch Config Details" },
-          "Parameters" : [ "PatchGroupName", "OperatingSystem", "LinuxPatchClassification", "LinuxPatchSeverity", "PatchScanMaintainanceWindowTime", "PatchScanMaintainanceWindowDayOfWeek"]
+          "Parameters" : [ "SelectWeekForPatchScan", "PatchGroupName", "OperatingSystem", "LinuxPatchClassification", "LinuxPatchSeverity", "PatchScanMaintainanceWindowTime", "PatchScanMaintainanceWindowDayOfWeek"]
          },
         {
             "Label" : { "default" : "Custom Defined Values" }, 
             "Parameters" : [  "ScheduleTimezone", "NotificationEmailAddress" ]
-        }
+        },
+
+        {
+          "Label" : { "default" : "JIRA Integration Values" }, 
+          "Parameters" : [  "JiraUrl", "JiraApiToken", "JiraProject", "JiraUsername" ]
+      }
         ]
       }
      },
@@ -111,6 +116,38 @@
               "Default" : "Etc/UTC"
           },
 
+          "JiraApiToken" : {
+            "Description" : "JIRA Portal API Token",
+            "Type" : "String",
+            "NoEcho": "true",
+            "MinLength": "1",
+            "ConstraintDescription": "JiraApiToken  is a Mandetory field for JIRA Ticket Creation"
+        },
+
+          "JiraUrl" : {
+            "Description" : "JIRA Portal URL orgnaisation",
+            "Type" : "String",
+            "MinLength": "1",
+            "ConstraintDescription": "JiraUrl  is a Mandetory field for JIRA Ticket Creation"
+            
+          },
+
+          "JiraProject" : {
+            "Description" : "JIRA Portal URL orgnaisation",
+            "Type" : "String",
+            "MinLength": "1",
+            "ConstraintDescription": "JiraProject Name is a Mandetory field for JIRA Ticket Creation" 
+          },
+
+
+          "JiraUsername" : {
+            "Description" : "JIRA Portal User Name (email-id of user)",
+            "Type" : "String",
+            "NoEcho": "true",
+            "MinLength": "1",
+            "ConstraintDescription": "JiraUsername Name is a Mandetory field for JIRA Ticket Creation" 
+        },
+
           "NotificationEmailAddress" : {
             "Description" : "Notification Email Address for SNS Topic",
             "Type" : "String",
@@ -161,6 +198,7 @@
           }
         },
 
+
         "PatchExecutionRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -179,7 +217,7 @@
                     "Action": "sts:AssumeRole"
                 }
                 ]
-            },
+              },
               "Policies": [
                 {
                 "PolicyName": { "Fn::Join": [ "-", ["PatchScan", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "IAMPolicy"]]},
@@ -381,7 +419,7 @@
               },
                 "NotificationConfig": {
                     "NotificationArn": { "Ref": "NotificationTopic"},
-                    "NotificationEvents": ["All"],
+                    "NotificationEvents": ["Success"],
                     "NotificationType": "Command"
                 },
                 "ServiceRoleArn": {
@@ -440,6 +478,7 @@
                               "import boto3\n",
                               "import os\n",
                               "import json\n",
+                              "import time\n",
 
                               "def lambda_handler(event, context):\n",
                               "    ec2 = boto3.client('ec2')\n\n",
@@ -467,13 +506,16 @@
 
                               "    # Check if there are instances to tag\n",
                               "    if instance_ids:\n",
-                              "        # Apply PatchGroup=test tag to all filtered instances\n",
+                              "        # Apply PatchGroup tag to all filtered instances\n",
                               "        ec2.create_tags(\n",
                               "            Resources=instance_ids,\n",
                               "            Tags=[\n",
                               "                {'Key': 'PatchGroup', 'Value': os.environ['PatchGroupName']}\n",
                               "            ]\n",
                               "        )\n",
+
+                              "       # Sleep for 30 seconds to allow the tags to propagate\n",
+                              "        time.sleep(30)\n",
 
                               "        print(f\"Applied PatchGroup=test tag to instances: {instance_ids}\")\n",
                               "    else:\n",
@@ -499,6 +541,99 @@
 
                 }
               },
+
+
+        "JIRALambdaFunction": {
+            "DependsOn": ["PatchExecutionRole"],
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "FunctionName" : { "Fn::Join": ["-", ["JIRA-PatchScan", { "Ref": "ProjectName" }, { "Ref": "Environment" }, {"Ref": "OperatingSystem"}, "function" ]] },
+                "Handler": "index.lambda_handler",
+                "Role": {
+                    "Fn::GetAtt": ["PatchExecutionRole", "Arn"]
+                },
+                "Code": {
+                    "ZipFile": {
+                      "Fn::Join": [
+                        "\n",
+                        [
+                          "import json",
+                          "import urllib.request",
+                          "import base64",
+                          "import os",
+                          "",
+
+                          "JIRA_URL = os.environ['JIRA_URL']",
+                          "JIRA_USER = os.environ['JIRA_USERNAME']",
+                          "JIRA_API_TOKEN = os.environ['JIRA_API_TOKEN']",
+                          "JIRA_PROJECT = os.environ['JIRA_PROJECT']",
+
+                          "",
+
+                          "def lambda_handler(event, context):",
+                          "    sns_message = event['Records'][0]['Sns']['Message']",
+                          "    sns_message_json = json.loads(sns_message)",
+                          "    instance_ids = sns_message_json.get('InstanceIds', [])",
+                          "    scheduled_time = sns_message_json.get('eventTime', '')",
+                          "    task_command_id = sns_message_json.get('commandId', '')",
+                          "    create_jira_ticket(instance_ids, scheduled_time, task_command_id)",
+                          "    return {'statusCode': 200, 'body': json.dumps('JIRA ticket created successfully.')}",
+                          "",
+
+                          "def create_jira_ticket(instance_ids, scheduled_time, task_command_id):",
+                          "    jira_data = {",
+                          "        'fields': {",
+                          "            'project': {'key': JIRA_PROJECT},",
+                          "            'summary': f'Patch Scan Success for Instance {instance_ids}',",
+                          "            'description': f'Instances: {instance_ids}\\nScheduled Time: {scheduled_time}\\nTask Command ID: {task_command_id}',",
+                          "            'issuetype': {'name': 'Task'}",
+                          "        }",
+                          "    }",
+                          
+                          "    auth_string = f'{JIRA_USER}:{JIRA_API_TOKEN}'",
+                          "    auth_encoded = base64.b64encode(auth_string.encode()).decode('utf-8')",
+                          "    req = urllib.request.Request(f'{JIRA_URL}/rest/api/2/issue', data=json.dumps(jira_data).encode(), headers={'Authorization': f'Basic {auth_encoded}', 'Content-Type': 'application/json'})",
+                          "    with urllib.request.urlopen(req) as response:",
+                          "        print(response.read().decode())"
+                        ]
+                      ]
+                    }
+              },
+                "Runtime": "python3.9",
+                "Timeout": 300,
+                "Environment": {
+                  "Variables": {
+                      "JIRA_URL": {"Ref": "JiraUrl"},
+                      "JIRA_USERNAME": {"Ref": "JiraUsername"},
+                      "JIRA_PROJECT" : "DEV",
+                      "JIRA_API_TOKEN": {"Ref": "JiraApiToken"}
+                    } 
+                  }
+
+                }
+              },
+
+              "LambdaNotificationTopicSubscription" : {
+                "Type" : "AWS::SNS::Subscription",
+                "Properties" : {
+                  "Endpoint" : {"Fn::GetAtt": ["JIRALambdaFunction", "Arn"]},
+                  "Protocol" : "Lambda",
+                  "TopicArn" : {"Ref": "NotificationTopic"}
+                }
+              },
+
+              "LambdaInvokePermission": {
+                "DependsOn" : ["JIRALambdaFunction"],
+                "Type": "AWS::Lambda::Permission",
+                  "Properties": {
+                    "FunctionName": {
+                      "Fn::GetAtt": ["JIRALambdaFunction", "Arn"]
+                      },
+                    "Action": "lambda:InvokeFunction",
+                    "Principal": "sns.amazonaws.com",
+                    "SourceArn": {"Ref": "NotificationTopic"}
+                  }
+                },              
 
       "PatchScanLogGroup": {
         "Type": "AWS::Logs::LogGroup",

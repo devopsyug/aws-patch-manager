@@ -1,0 +1,632 @@
+{
+     "AWSTemplateFormatVersion" : "2010-09-09",
+  
+    "Description" : "AWS SSM Patch Manager - Linux OS Patch Scan Baseline",
+        "Metadata" : {
+        "AWS::CloudFormation::Interface" : {
+        "ParameterGroups" : [
+        {
+            "Label" : { "default" : "Project Information Parameter" },
+            "Parameters" : [ "AWSAccountID", "AccountOwner", "ProjectName", "Environment", "RequestID", "ApproverName" ]
+        },        
+        {
+          "Label" : { "default" : "Recommended - Patch Config Details" },
+          "Parameters" : [ "PatchGroupName", "OperatingSystem", "LinuxPatchClassification", "LinuxPatchSeverity", "PatchScanMaintainanceWindowTime", "PatchScanMaintainanceWindowDayOfWeek"]
+         },
+        {
+            "Label" : { "default" : "Custom Defined Values" }, 
+            "Parameters" : [  "ScheduleTimezone", "NotificationEmailAddress" ]
+        }
+        ]
+      }
+     },
+     
+      "Parameters" : {
+
+        "AWSAccountID" : {
+            "Description" : "AWS Account ID of this Resources",
+            "Type" : "String",
+            "Default" : "123456789"
+          },
+
+        "AccountOwner" : {
+            "Description" : "AWS Accont Owner of this Resources",
+            "Type" : "String",
+            "Default" : "Chaitanya"
+          },
+
+        "ProjectName" : {
+            "Description" : "Client Project Name",
+            "Type" : "String",
+            "Default" : "che-demo"
+          },
+
+        "Environment" : {
+            "Description" : "Envoironment Name of Resource (ex. dev, stage, production)",
+            "Type" : "String",
+            "Default" : "dev"
+          },
+
+        "RequestID" : {
+            "Description" : "Request ID of Task for this Resource",
+            "Type" : "String",
+            "Default" : "123456"
+          },
+
+        "ApproverName" : {
+            "Description" : "Approver Name for this Resource",
+            "Type" : "String",
+            "Default" : "Chaitanya"
+          },
+
+        "PatchScanMaintainanceWindowTime" : {
+            "Description" : "Patch SCAN MaintainanceWindow (MINUTE HOUR) eg. (00 09) -- 9:00 AM",
+               "Type" : "String",
+               "Default" : "00 09",
+               "MinLength": "1",
+               "ConstraintDescription": "PatchScanMaintainanceWindowTime is Mandetory field to procced futher"               
+          },
+
+
+          "PatchScanMaintainanceWindowDayOfWeek" : {
+            "Description" : "MaintainanceWindow Day of teh Week eg. (MON, TUE, WED, THU, FRI, SAT, SUN) - Select * for Daily Execution",
+               "Type" : "String",
+               "Default" : "SAT",
+               "AllowedValues": ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN", "*"],
+               "MinLength": "1",
+               "ConstraintDescription": "MaintainanceWindowTime is Mandetory field to procced futher"               
+          },
+          
+          "OperatingSystem" : {
+            "Description" : "Server Operating System",
+            "Type" : "String",
+            "AllowedValues": ["AMAZON_LINUX_2022",  "AMAZON_LINUX_2023"],
+            "MinLength": "1",
+            "ConstraintDescription": "OperatingSystem is an Mandtory Field to Proceed Further" 
+          },
+
+
+          "PatchClassification" : {
+                "Description" : "Patching Classification for System { use * for all --(Supported Values - Security, Bugfix, Enhancement, Recommended, Newpackage)}",
+                "Type" : "String",
+                "Default" : "*"
+          },
+    
+          "PatchSeverity" : {
+              "Description" : "Patching Severity for Linux Operating System { use * for all -- (Supported Values - Critical, Important, Medium, Low)}",
+              "Type" : "String",
+              "Default" : "*"
+          },
+
+          "PatchGroupName" : {
+                "Description" : "Patching Tag Value (Intance Specfied with key - PatchGroup)",
+                "Type" : "String",
+                "Default" : "LinuxOS-PatchScan",
+                "AllowedValues": ["LinuxOS-PatchScan"]
+          },
+
+          "ScheduleTimezone" : {
+              "Description" : "Patching Schedule time zone",
+              "Type" : "String",
+              "Default" : "Etc/UTC"
+          },
+
+          "NotificationEmailAddress" : {
+            "Description" : "Notification Email Address for SNS Topic",
+            "Type" : "String",
+            "MinLength": "1",
+            "ConstraintDescription": "NotificationEmailAddress is an Mandtory Field to Proceed Further"               
+          },
+          
+          "SelectWeekForPatchScan" : {
+            "Description" : "Select Week of Month in which patch scan should happen",
+            "Type" : "String",
+            "Default" : "",
+            "AllowedValues" : ["#1", "#2", "#3", "#4", ""]
+          }
+
+        },
+
+        "Conditions": {
+          "IsAmazonLinux2022": {"Fn::Equals": [{"Ref": "OperatingSystem"}, "AMAZON_LINUX_2022"]},
+          "IsAmazonLinux2023": {"Fn::Equals": [{"Ref": "OperatingSystem"}, "AMAZON_LINUX_2023"]}
+         },
+
+
+        "Resources" : {
+
+        "NotificationTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+              "TopicName": { "Fn::Join": [ "-", ["PatchScan", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "SNSTopic"]]},
+              "Tags": [
+                {"Key" : "Name", "Value" : { "Fn::Join": [ "-", ["PatchScan", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "SNSTopic"]]}},
+                {"Key" : "Environment", "Value" : {"Ref" : "Environment"}},
+                {"Key" : "AWSAccountID", "Value" : {"Ref" : "AWSAccountID"}},
+                {"Key" : "AccountOwner", "Value" : {"Ref" : "AccountOwner"}},
+                {"Key" : "ProjectName", "Value" : {"Ref" : "ProjectName"}},
+                {"Key" : "RequestID", "Value" : {"Ref" : "RequestID"}},
+                {"Key" : "ApproverName", "Value" : {"Ref" : "ApproverName"}},
+                {"Key" : "StackName", "Value" : {"Ref" : "AWS::StackName"}}
+              ]
+            }
+          },
+
+        "NotificationTopicSubscription" : {
+          "Type" : "AWS::SNS::Subscription",
+          "Properties" : {
+            "Endpoint" : {"Ref": "NotificationEmailAddress"},
+            "Protocol" : "Email",
+            "TopicArn" : {"Ref": "NotificationTopic"}
+          }
+        },
+
+
+
+        "PatchExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "RoleName": { "Fn::Join": [ "-", ["PatchScan", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "IAMRole"]]},
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                    "Service": [
+                        "ssm.amazonaws.com",
+                        "lambda.amazonaws.com"
+                    ]
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+                ]
+            },
+              "Policies": [
+                {
+                "PolicyName": { "Fn::Join": [ "-", ["PatchScan", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "IAMPolicy"]]},
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "ssm:SendCommand",
+                            "ssm:DescribeInstanceInformation",
+                            "ssm:GetDocument",
+                            "ssm:ListCommands",
+                            "ssm:ListCommandInvocations",
+                            "ssm:DescribePatchBaselines",
+                            "ssm:UpdatePatchBaseline",
+                            "ssm:DescribeMaintenanceWindows",
+                            "ssm:DescribeMaintenanceWindowTargets",
+                            "ssm:UpdateMaintenanceWindowTarget",
+                            "logs:CreateLogStream",
+                            "logs:PutLogEvents",
+                            "logs:DescribeLogStreams",
+                            "sns:Publish",
+                            "iam:PassRole",
+                            "lambda:InvokeFunction",
+                            "ec2:DescribeInstances",
+                            "ec2:CreateTags"
+                            
+                        ],
+                        "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
+                          "Action": [
+                            "s3:GetObject",
+                            "s3:ListBucket"
+                          ],
+                        "Resource": {
+                          "Fn::Sub": "arn:aws:s3:::${ProjectName}-${Environment}-linux-patch-install-s3-bucket/*"
+                      }
+                    }
+                    ]
+                }
+                }
+            ],
+            "Tags": [
+              {"Key" : "Name", "Value" : { "Fn::Join": [ "-", ["PatchScan", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "IAMRole"]]}},
+              {"Key" : "Environment", "Value" : {"Ref" : "Environment"}},
+              {"Key" : "AWSAccountID", "Value" : {"Ref" : "AWSAccountID"}},
+              {"Key" : "AccountOwner", "Value" : {"Ref" : "AccountOwner"}},
+              {"Key" : "ProjectName", "Value" : {"Ref" : "ProjectName"}},
+              {"Key" : "RequestID", "Value" : {"Ref" : "RequestID"}},
+              {"Key" : "ApproverName", "Value" : {"Ref" : "ApproverName"}},
+              {"Key" : "StackName", "Value" : {"Ref" : "AWS::StackName"}}            
+            ]
+            }
+        },
+
+        "LinuxPatchScanBaseLine" :  {
+             "Type" : "AWS::SSM::PatchBaseline",
+               "Properties" : {
+                "Name" : { "Fn::Join": [ "-", ["PatchScan", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "PatchBaseLine"]]},
+                "Description" : { "Fn::Join": [ "-", ["PatchScan", "PatchBaseline for", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}]]},
+                "OperatingSystem" : { "Ref" : "OperatingSystem" },
+                "PatchGroups" : [{"Ref" : "PatchGroupName"}],
+                 "ApprovalRules" : {
+                        "PatchRules" : [ {
+                            "ApproveAfterDays" : 0,
+                            "ComplianceLevel" : "UNSPECIFIED",
+                            "EnableNonSecurity" : true,
+                            "PatchFilterGroup" : {
+                                "PatchFilters" : [ {
+                                    "Key" : "PRODUCT",
+                                    "Values" : [
+                                      {
+                                        "Fn::If": [
+                                          "IsAmazonLinux2022",
+                                          "AmazonLinux2022",
+                                          {
+                                            "Fn::If": [
+                                              "IsAmazonLinux2023",
+                                              "AmazonLinux2023",
+                                              "null"
+                                              
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                    },
+                                    {
+                                        "Key" : "CLASSIFICATION",
+                                        "Values" : { "Fn::Split" : [",", {"Ref": "PatchClassification"}]}
+                                        
+                                    },
+                                    {
+                                      "Key" : "SEVERITY",
+                                      "Values" : { "Fn::Split" : [",", {"Ref": "PatchSeverity"}]}
+                                    }                                    
+                                ]
+                              }
+                          } ]
+                  },              
+                 "ApprovedPatchesComplianceLevel" : "UNSPECIFIED",
+                 "ApprovedPatchesEnableNonSecurity" : true,
+                 "Tags": [
+                  {"Key" : "Name", "Value" : { "Fn::Join": [ "-", ["PatchScan", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "PatchBaseLine"]]}},
+                  {"Key" : "Environment", "Value" : {"Ref" : "Environment"}},
+                  {"Key" : "AWSAccountID", "Value" : {"Ref" : "AWSAccountID"}},
+                  {"Key" : "AccountOwner", "Value" : {"Ref" : "AccountOwner"}},
+                  {"Key" : "ProjectName", "Value" : {"Ref" : "ProjectName"}},
+                  {"Key" : "RequestID", "Value" : {"Ref" : "RequestID"}},
+                  {"Key" : "ApproverName", "Value" : {"Ref" : "ApproverName"}},
+                  {"Key" : "StackName", "Value" : {"Ref" : "AWS::StackName"}}            
+                ]
+                 
+               }
+           },
+
+        "PatchScanMaintenanceWindow": {
+            "Type": "AWS::SSM::MaintenanceWindow",
+            "Properties": {
+              "Name": { "Fn::Join": [ "-", [ "PatchScan", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"},"MaintenanceWindow"]]},
+              "Schedule": { "Fn::Sub": "cron(${PatchScanMaintainanceWindowTime} ? * ${PatchScanMaintainanceWindowDayOfWeek}${SelectWeekForPatchScan} * )"},
+              "Duration": 2,
+              "Cutoff": 1,
+              "AllowUnassociatedTargets": false,
+              "ScheduleTimezone": { "Ref": "ScheduleTimezone"},
+              "Tags": [
+                {"Key" : "Name", "Value" : { "Fn::Join": [ "-", ["PatchScan",  { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "MaintenanceWindow"]]}},
+                {"Key" : "Environment", "Value" : {"Ref" : "Environment"}},
+                {"Key" : "AWSAccountID", "Value" : {"Ref" : "AWSAccountID"}},
+                {"Key" : "AccountOwner", "Value" : {"Ref" : "AccountOwner"}},
+                {"Key" : "ProjectName", "Value" : {"Ref" : "ProjectName"}},
+                {"Key" : "RequestID", "Value" : {"Ref" : "RequestID"}},
+                {"Key" : "ApproverName", "Value" : {"Ref" : "ApproverName"}},
+                {"Key" : "StackName", "Value" : {"Ref" : "AWS::StackName"}}            
+              ]
+            }
+          },
+
+        "Ec2TaggingMaintenanceWindowTask": {
+            "Type": "AWS::SSM::MaintenanceWindowTask",
+            "Properties": {
+                "Priority": 1,   
+                "WindowId": {
+                "Ref": "PatchScanMaintenanceWindow"
+                },
+                "TaskArn": {"Fn::GetAtt": ["PatchLambdaFunction", "Arn"]},
+              "ServiceRoleArn": {
+                  "Fn::GetAtt": [
+                  "PatchExecutionRole",
+                  "Arn"
+                  ]
+                },
+              "TaskType": "LAMBDA"
+            }
+          },
+
+
+          "PatchScanMaintenanceWindowTask": {
+            "Type": "AWS::SSM::MaintenanceWindowTask",
+            "Properties": {
+                "Priority": 2,
+                "MaxConcurrency": "1",
+                "MaxErrors": "1",   
+                "WindowId": {
+                "Ref": "PatchScanMaintenanceWindow"
+            },
+            "TaskArn": "AWS-RunPatchBaseline",
+            "ServiceRoleArn": {
+                "Fn::GetAtt": [
+                "PatchExecutionRole",
+                "Arn"
+                ]
+            },
+            "Targets": [
+                {
+                "Key": "WindowTargetIds",
+                "Values": [
+                    {"Ref": "PatchScanMaintenanceWindowTarget"}
+                ]
+                }
+            ],
+
+          "TaskType": "RUN_COMMAND",
+          "TaskInvocationParameters": {
+            "MaintenanceWindowRunCommandParameters": {
+              "Parameters": {
+                "Operation": [
+                  "Scan"
+                ]
+              },
+              "CloudWatchOutputConfig": {
+                "CloudWatchLogGroupName": {
+                  "Ref": "PatchScanLogGroup"
+                },
+                "CloudWatchOutputEnabled": true
+              },
+                "NotificationConfig": {
+                    "NotificationArn": { "Ref": "NotificationTopic"},
+                    "NotificationEvents": ["All"],
+                    "NotificationType": "Command"
+                },
+                "ServiceRoleArn": {
+                    "Fn::GetAtt": [
+                    "PatchExecutionRole",
+                    "Arn"
+                    ]
+                }           
+            }
+          }
+        }
+      },
+
+      "PatchScanMaintenanceWindowTarget": {
+            "Type": "AWS::SSM::MaintenanceWindowTarget",
+            "Properties": {
+              "WindowId": {
+                "Ref": "PatchScanMaintenanceWindow"
+              },
+              
+              "ResourceType": "INSTANCE",
+              "Targets": [
+                {
+                  "Key": "tag:PatchGroup",
+                  "Values": [
+                    { "Ref": "PatchGroupName"}
+                  ]
+                },
+                {
+                  "Key": "tag:Environment",
+                  "Values": [
+                    { "Ref": "Environment"}
+                  ]
+                }
+              ],
+              "OwnerInformation": "Patch Scan Maintainance Window Target for Instance"
+            }
+          },
+
+
+
+        "PatchLambdaFunction": {
+            "DependsOn": ["PatchExecutionRole"],
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "FunctionName" : { "Fn::Join": ["-", ["PatchScan", { "Ref": "ProjectName" }, { "Ref": "Environment" }, {"Ref": "OperatingSystem"}, "function" ]] },
+                "Handler": "index.lambda_handler",
+                "Role": {
+                    "Fn::GetAtt": ["PatchExecutionRole", "Arn"]
+                },
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "",
+                            [
+                              "import boto3\n",
+                              "import os\n",
+                              "import json\n",
+
+                              "def lambda_handler(event, context):\n",
+                              "    ec2 = boto3.client('ec2')\n\n",
+
+                              "    # Filter to get instances with the tag 'env=dev'\n",
+                              "    filters = [\n",
+                              "        {\n",
+                              "            'Name': 'tag:Environment',\n",
+                              "            'Values': [os.environ['Environment']]\n",
+                              "        }\n",
+
+                              "    ]\n\n",
+
+                              "    # Describe instances that match the filter\n",
+                              "    instances = ec2.describe_instances(Filters=filters)\n\n",
+
+
+                              "    # List to store instance IDs that need tagging\n",
+                              "    instance_ids = []\n\n",
+
+                              "    for reservation in instances['Reservations']:\n",
+                              "        for instance in reservation['Instances']:\n",
+                              "            instance_id = instance['InstanceId']\n",
+                              "            instance_ids.append(instance_id)\n\n",
+
+                              "    # Check if there are instances to tag\n",
+                              "    if instance_ids:\n",
+                              "        # Apply PatchGroup=test tag to all filtered instances\n",
+                              "        ec2.create_tags(\n",
+                              "            Resources=instance_ids,\n",
+                              "            Tags=[\n",
+                              "                {'Key': 'PatchGroup', 'Value': os.environ['PatchGroupName']}\n",
+                              "            ]\n",
+                              "        )\n",
+
+                              "        print(f\"Applied PatchGroup=test tag to instances: {instance_ids}\")\n",
+                              "    else:\n",
+
+                              "        print(\"No instances found with Environment=os.environ['Environment'] tag\")\n\n",
+                              "    return {\n",
+
+                              "        'statusCode': 200,\n",
+                              "        'body': f\"Tagged {len(instance_ids)} instance(s) with PatchGroup=os.environ['PatchGroupName']\"\n",
+                              "    }\n"
+                            ]
+                          ]
+                    }
+                },
+                "Runtime": "python3.9",
+                "Timeout": 300,
+                "Environment": {
+                  "Variables": {
+                      "Environment": { "Ref": "Environment" },
+                      "PatchGroupName": { "Ref": "PatchGroupName" }
+                    } 
+                  }
+
+                }
+              },
+
+
+        "JIRALambdaFunction": {
+            "DependsOn": ["PatchExecutionRole"],
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "FunctionName" : { "Fn::Join": ["-", ["JIRA-PatchScan", { "Ref": "ProjectName" }, { "Ref": "Environment" }, {"Ref": "OperatingSystem"}, "function" ]] },
+                "Handler": "index.lambda_handler",
+                "Role": {
+                    "Fn::GetAtt": ["PatchExecutionRole", "Arn"]
+                },
+                "Code": {
+                    "ZipFile": {
+                      "Fn::Join": [
+              "\n",
+              [
+                "import json",
+                "import urllib.request",
+                "import os",
+                "from base64 import b64encode",
+                "",
+                "def lambda_handler(event, context):",
+                "    # Parse SNS message",
+                "    sns_message = event['Records'][0]['Sns']['Message']",
+                "    patch_scan_data = json.loads(sns_message)",
+                "",
+                "    # Extract necessary data from the message",
+                "    ec2_instance_id = patch_scan_data.get('InstanceId')",
+                "    patch_scan_status = patch_scan_data.get('Status')",
+                "",
+                "    # JIRA credentials",
+                "    jira_url = os.getenv('JIRA_URL')",
+                "    jira_username = os.getenv('JIRA_USERNAME')",
+                "    jira_token = os.getenv('JIRA_API_TOKEN')",
+                "",
+                "    # JIRA issue details",
+                "    issue_data = {",
+                "        \"fields\": {",
+                "            \"project\": {",
+                "                \"key\": \"DEV\"",
+                "            },",
+                "            \"summary\": f\"EC2 Patch Scan Completed for Instance {ec2_instance_id}\",",
+                "            \"description\": f\"Patch scan status: {patch_scan_status} for EC2 instance {ec2_instance_id}.\",",
+                "            \"issuetype\": {",
+                "                \"name\": \"Task\"",
+                "            }",
+                "        }",
+                "    }",
+                "",
+                "    # Convert issue_data to JSON",
+                "    issue_data_json = json.dumps(issue_data).encode('utf-8')",
+                "",
+                "    # Prepare JIRA API request",
+                "    request = urllib.request.Request(f\"{jira_url}/rest/api/2/issue\", data=issue_data_json)",
+                "    auth = b64encode(f\"{jira_username}:{jira_token}\".encode('utf-8')).decode('utf-8')",
+                "    request.add_header(\"Authorization\", f\"Basic {auth}\")",
+                "    request.add_header(\"Content-Type\", \"application/json\")",
+                "",
+                "    # Send the request to JIRA API",
+                "    try:",
+                "        with urllib.request.urlopen(request) as response:",
+                "            response_data = response.read().decode('utf-8')",
+                "            return {",
+                "                \"statusCode\": 200,",
+                "                \"body\": json.dumps(f\"JIRA ticket created successfully: {response_data}\")",
+                "            }",
+                "    except urllib.error.HTTPError as e:",
+                "        return {",
+                "            \"statusCode\": e.code,",
+                "            \"body\": json.dumps(f\"Failed to create JIRA ticket: {e.read().decode('utf-8')}\")",
+                "        }"
+                    ]
+                  ]
+                }
+              },
+                "Runtime": "python3.9",
+                "Timeout": 300,
+                "Environment": {
+                  "Variables": {
+                      "JIRA_URL": "https://devopsyug.atlassian.net",
+                      "JIRA_USERNAME": "devopsyug@gmail.com",
+                      "JIRA_API_TOKEN": "ATATT3xFfGF04cE80vuG2a69Ya9dBLMrq-3Ogc9V-ZZ3S87FSiRv5Znghb3ssq3Y34ptzNyHh_r-ATRtAWR73MS22mFJWK8G9tVKLzvIk5f7KS1nPE9EkjNB-0Vovq-Pd7_cLWrv25YOlbTkS_WGU5MqwiI925ao3sO8E-YvNBU5-xhLMld68vg=1D3FE43A"
+                    } 
+                  }
+
+                }
+              },
+
+              "LambdaNotificationTopicSubscription" : {
+                "Type" : "AWS::SNS::Subscription",
+                "Properties" : {
+                  "Endpoint" : {"Fn::GetAtt": ["JIRALambdaFunction", "Arn"]},
+                  "Protocol" : "Lambda",
+                  "TopicArn" : {"Ref": "NotificationTopic"}
+                }
+              },
+
+              "LambdaInvokePermission": {
+                "DependsOn" : ["JIRALambdaFunction"],
+                "Type": "AWS::Lambda::Permission",
+                  "Properties": {
+                    "FunctionName": {
+                      "Fn::GetAtt": ["JIRALambdaFunction", "Arn"]
+                      },
+                    "Action": "lambda:InvokeFunction",
+                    "Principal": "sns.amazonaws.com",
+                    "SourceArn": {"Ref": "NotificationTopic"}
+                  }
+                },              
+
+      "PatchScanLogGroup": {
+        "Type": "AWS::Logs::LogGroup",
+        "Properties": {
+          "LogGroupName": { "Fn::Join": [ "/", ["/aws/ssm", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "PatchScan", "OperationLogs"]]},
+          "RetentionInDays": 30,
+          "Tags": [
+            {"Key" : "Name", "Value" : { "Fn::Join": [ "/", ["/aws/ssm", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "PatchScan", "OperationLogs"]]}},
+            {"Key" : "Environment", "Value" : {"Ref" : "Environment"}},
+            {"Key" : "AWSAccountID", "Value" : {"Ref" : "AWSAccountID"}},
+            {"Key" : "AccountOwner", "Value" : {"Ref" : "AccountOwner"}},
+            {"Key" : "ProjectName", "Value" : {"Ref" : "ProjectName"}},
+            {"Key" : "RequestID", "Value" : {"Ref" : "RequestID"}},
+            {"Key" : "ApproverName", "Value" : {"Ref" : "ApproverName"}},
+            {"Key" : "StackName", "Value" : {"Ref" : "AWS::StackName"}}
+          ]
+        }
+      }
+    }
+}
