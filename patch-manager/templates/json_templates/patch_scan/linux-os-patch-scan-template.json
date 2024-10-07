@@ -567,12 +567,14 @@
                           "JIRA_USER = os.environ['JIRA_USERNAME']",
                           "JIRA_API_TOKEN = os.environ['JIRA_API_TOKEN']",
                           "JIRA_PROJECT = os.environ['JIRA_PROJECT']",
+                          "Patch_Group = os.environ['PatchGroupName']",
 
                           "",
 
                           "def lambda_handler(event, context):",
                           "    sns_message = event['Records'][0]['Sns']['Message']",
                           "    sns_message_json = json.loads(sns_message)",
+                          "    patch_scan_status = patch_scan_data.get('Status')",
                           "    instance_ids = sns_message_json.get('InstanceIds', [])",
                           "    scheduled_time = sns_message_json.get('eventTime', '')",
                           "    task_command_id = sns_message_json.get('commandId', '')",
@@ -584,7 +586,7 @@
                           "    jira_data = {",
                           "        'fields': {",
                           "            'project': {'key': JIRA_PROJECT},",
-                          "            'summary': f'Patch Scan Success for Instance {instance_ids}',",
+                          "            'summary': f'Patch Scan {patch_scan_status} for PatchGroup {Patch_Group}',",
                           "            'description': f'Instances: {instance_ids}\\nScheduled Time: {scheduled_time}\\nTask Command ID: {task_command_id}',",
                           "            'issuetype': {'name': 'Task'}",
                           "        }",
