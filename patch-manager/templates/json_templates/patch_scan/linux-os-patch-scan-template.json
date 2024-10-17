@@ -547,7 +547,7 @@
                         }
                       },
                 "Runtime": "python3.9",
-                "Timeout": 300,
+                "Timeout": 600,
                 "Environment": {
                   "Variables": {
                       "Environment": { "Ref": "Environment" },
