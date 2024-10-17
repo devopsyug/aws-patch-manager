@@ -795,11 +795,11 @@
 
 
                             "        print(f\"Applied PatchGroup=test tag to instances: {instance_ids}\")",
+                            "       # Sleep for 300 seconds to allow the tags to propagate",
+                            "        time.sleep(300)",                             
                             "    else:",
 
-                            "        print(\"No instances found with Environment=os.environ['Environment'] tag\")",
-                            "       # Sleep for 300 seconds to allow the tags to propagate",
-                            "        time.sleep(300)",                            
+                            "        print(\"No instances found with Environment=os.environ['Environment'] tag\")",                           
                             "    return {",
 
                             "        'statusCode': 200,",
