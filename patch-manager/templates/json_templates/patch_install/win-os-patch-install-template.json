@@ -66,7 +66,7 @@
             "Default" : "chaitanya"
           },
 
-        "PatchScanMaintainanceWindowTime" : {
+        "PatchInstallMaintainanceWindowTime" : {
             "Description" : "Patch Install MaintainanceWindow (MINUTE HOUR) eg. (00 09) -- 9:00 AM",
                "Type" : "String",
                "Default" : "00 09",
@@ -173,8 +173,8 @@
             "ConstraintDescription": "JiraUsername Name is a Mandetory field for JIRA Ticket Creation" 
           },
 
-          "SelectWeekForPatchScan" : {
-            "Description" : "Select Week of Month in which patch scan should happen",
+          "SelectWeekForPatchInstall" : {
+            "Description" : "Select Week of Month in which patch Install should happen",
             "Type" : "String",
             "Default" : "",
             "AllowedValues" : ["#1", "#2", "#3", "#4", ""]
@@ -234,11 +234,12 @@
                       "Effect": "Allow",
                       "Principal": {
                       "Service": [
-                          "ssm.amazonaws.com"
+                        "ssm.amazonaws.com",
+                        "lambda.amazonaws.com"
                       ]
-                      },
+                    },
                       "Action": "sts:AssumeRole"
-                  }
+                    }
                   ]
               },
                 "Policies": [
@@ -283,7 +284,7 @@
                                 "s3:ListBucket"
                               ],
                             "Resource": {
-                              "Fn::Sub": "arn:aws:s3:::${ProjectName}-${Environment}-linux-patch-install-s3-bucket/*"
+                              "Fn::Sub": "arn:aws:s3:::${ProjectName}-${Environment}-linux-patch-exclusion-s3-bucket/*"
                             }
                           }
                         ]
@@ -352,7 +353,7 @@
               "Type": "AWS::SSM::MaintenanceWindow",
               "Properties": {
                 "Name": { "Fn::Join": [ "-", ["Patch", "Install", {"Ref": "ProjectName"}, { "Ref": "Environment"},  {"Ref": "OperatingSystem"}, "MaintenanceWindow"]]},
-                "Schedule": { "Fn::Sub": "cron(${PatchScanMaintainanceWindowTime} ? * ${PatchScanMaintainanceWindowDayOfWeek}${SelectWeekForPatchScan} * )"},
+                "Schedule": { "Fn::Sub": "cron(${PatchInstallMaintainanceWindowTime} ? * ${PatchInstallMaintainanceWindowDayOfWeek}${SelectWeekForPatchInstall} * )"},
                 "Duration": 2,
                 "Cutoff": 1,
                 "AllowUnassociatedTargets": false,
@@ -405,10 +406,10 @@
                   "Ref": "PatchInstallMaintenanceWindow"
                   },
                   "TaskArn": {"Fn::GetAtt": ["PatchLambdaFunction", "Arn"]},
-                "ServiceRoleArn": {
+                  "ServiceRoleArn": {
                     "Fn::GetAtt": [
-                    "PatchExecutionRole",
-                    "Arn"
+                      "PatchExecutionRole",
+                      "Arn"
                     ]
                   },
                 "TaskType": "LAMBDA"
@@ -425,11 +426,11 @@
                   "WindowId": {
                   "Ref": "PatchInstallMaintenanceWindow"
               },
-              "TaskArn": "AWS-RunPatchBaseline",
-              "ServiceRoleArn": {
+                "TaskArn": "AWS-RunPatchBaseline",
+                "ServiceRoleArn": {
                   "Fn::GetAtt": [
-                  "PatchExecutionRole",
-                  "Arn"
+                    "PatchExecutionRole",
+                    "Arn"
                   ]
               },
               "Targets": [
@@ -497,7 +498,7 @@
             "DependsOn": ["PatchLambdaFunction"],
             "Type": "AWS::S3::Bucket",
             "Properties": {
-                "BucketName": { "Fn::Join": ["-", [{ "Ref": "ProjectName" }, { "Ref": "Environment" }, "windows-patch-install-s3-bucket" ]] },
+                "BucketName": { "Fn::Join": ["-", [{ "Ref": "ProjectName" }, { "Ref": "Environment" }, "windows-patch-exclusion-s3-bucket" ]] },
                 "NotificationConfiguration": {
                  "LambdaConfigurations": [
                     {
@@ -518,18 +519,18 @@
                 },
               "Action": "lambda:InvokeFunction",
               "Principal": "s3.amazonaws.com",
-              "SourceArn": {"Fn::Sub": "arn:aws:s3:::${ProjectName}-${Environment}-windows-patch-install-s3-bucket"}
+              "SourceArn": {"Fn::Sub": "arn:aws:s3:::${ProjectName}-${Environment}-windows-patch-exclusion-s3-bucket"}
             }
           },
   
         "PatchS3LambdaFunction": {
-            "DependsOn": ["PatchLambdaExecutionRole"],
+            "DependsOn": ["PatchExecutionRole"],
             "Type": "AWS::Lambda::Function",
             "Properties": {
               "FunctionName" : { "Fn::Join": ["-", ["PatchInstall-on-S3Trigger", { "Ref": "ProjectName" }, { "Ref": "Environment" }, {"Ref": "OperatingSystem"}, "function" ]] },
                 "Handler": "index.lambda_handler",
                 "Role": {
-                    "Fn::GetAtt": ["PatchLambdaExecutionRole", "Arn"]
+                    "Fn::GetAtt": ["PatchExecutionRole", "Arn"]
                 },
                 "Code": {
                     "ZipFile": {
