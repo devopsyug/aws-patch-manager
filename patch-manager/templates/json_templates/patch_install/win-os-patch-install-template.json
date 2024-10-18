@@ -36,6 +36,12 @@
             "Default" : "chaitanya"
           },
 
+          "CustomerName" : {
+            "Description" : "Project Customer Name of this Resources",
+            "Type" : "String",
+            "Default" : "Chaitanya"
+          },          
+
         "ProjectName" : {
             "Description" : "Client Project Name in small letter case",
             "Type" : "String",
@@ -60,7 +66,7 @@
             "Default" : "chaitanya"
           },
 
-        "PatchInstallMaintenanceWindowTime" : {
+        "PatchScanMaintainanceWindowTime" : {
             "Description" : "Patch Install MaintainanceWindow (MINUTE HOUR) eg. (00 09) -- 9:00 AM",
                "Type" : "String",
                "Default" : "00 09",
@@ -118,10 +124,10 @@
           },
 
           "ScheduleTimezone" : {
-              "Description" : "Patching Schedule time zone",
-              "Type" : "String",
-              "Default" : "Etc/UTC"
-          },
+            "Description" : "Patching Schedule time zone",
+            "Type" : "String",
+            "Default" : "Etc/UTC"
+        },
 
           "RejectedPatches": {
             "Description" : "Rejects Patches Name with Comma",
@@ -134,7 +140,52 @@
             "Type" : "String",
             "MinLength": "1",
             "ConstraintDescription": "NotificationEmailAddress is an Mandetory Field to Proceed Further"               
-          }          
+          },
+          "JiraApiToken" : {
+            "Description" : "JIRA Portal API Token",
+            "Type" : "String",
+            "NoEcho": "true",
+            "MinLength": "1",
+            "ConstraintDescription": "JiraApiToken  is a Mandetory field for JIRA Ticket Creation"
+        },
+
+          "JiraUrl" : {
+            "Description" : "JIRA Portal URL orgnaisation",
+            "Type" : "String",
+            "MinLength": "1",
+            "ConstraintDescription": "JiraUrl  is a Mandetory field for JIRA Ticket Creation"
+            
+          },
+
+          "JiraProject" : {
+            "Description" : "JIRA Portal URL orgnaisation",
+            "Type" : "String",
+            "MinLength": "1",
+            "ConstraintDescription": "JiraProject Name is a Mandetory field for JIRA Ticket Creation" 
+          },
+
+
+          "JiraUsername" : {
+            "Description" : "JIRA Portal User Name (email-id of user)",
+            "Type" : "String",
+            "NoEcho": "true",
+            "MinLength": "1",
+            "ConstraintDescription": "JiraUsername Name is a Mandetory field for JIRA Ticket Creation" 
+          },
+
+          "SelectWeekForPatchScan" : {
+            "Description" : "Select Week of Month in which patch scan should happen",
+            "Type" : "String",
+            "Default" : "",
+            "AllowedValues" : ["#1", "#2", "#3", "#4", ""]
+          },
+
+          "PatchReportBucket" : {
+            "Description" : "Specify the bucket name to store patch reports",
+            "Type" : "String",
+            "MinLength": "1",
+            "ConstraintDescription": "PatchReportBucket is an Mandtory Field to Proceed Further" 
+          }         
 
         },
 
@@ -148,9 +199,9 @@
           "NotificationTopic": {
               "Type": "AWS::SNS::Topic",
               "Properties": {
-                "TopicName": { "Fn::Join": [ "-", ["Patch", "Install", {"Ref": "ProjectName"}, { "Ref": "Environment"}, {"Ref": "OperatingSystem"}, "SNSTopic"]]},
+                "TopicName": { "Fn::Join": [ "-", ["PatchInstall", {"Ref": "ProjectName"}, { "Ref": "Environment"}, {"Ref": "OperatingSystem"}, "SNSTopic"]]},
                 "Tags": [
-                  {"Key" : "Name", "Value" : { "Fn::Join": [ "-", ["Patch", "Install",{ "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "SNSTopic"]]}},
+                  {"Key" : "Name", "Value" : { "Fn::Join": [ "-", ["PatchInstall",{ "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "SNSTopic"]]}},
                   {"Key" : "Environment", "Value" : {"Ref" : "Environment"}},
                   {"Key" : "AWSAccountID", "Value" : {"Ref" : "AWSAccountID"}},
                   {"Key" : "AccountOwner", "Value" : {"Ref" : "AccountOwner"}},
@@ -175,7 +226,7 @@
           "PatchExecutionRole": {
               "Type": "AWS::IAM::Role",
               "Properties": {
-                "RoleName": { "Fn::Join": [ "-", ["Patch", "Install", {"Ref": "ProjectName"}, { "Ref": "Environment"}, {"Ref": "OperatingSystem"}, "IAMRole"]]},
+                "RoleName": { "Fn::Join": [ "-", ["PatchInstall", {"Ref": "ProjectName"}, { "Ref": "Environment"}, {"Ref": "OperatingSystem"}, "IAMRole"]]},
                 "AssumeRolePolicyDocument": {
                   "Version": "2012-10-17",
                   "Statement": [
@@ -192,32 +243,55 @@
               },
                 "Policies": [
                   {
-                  "PolicyName": { "Fn::Join": [ "-", ["Patch", "Install", {"Ref": "ProjectName"}, { "Ref": "Environment"}, {"Ref": "OperatingSystem"}, "IAMPolicy"]]},
+                  "PolicyName": { "Fn::Join": [ "-", ["PatchInstall", {"Ref": "ProjectName"}, { "Ref": "Environment"}, {"Ref": "OperatingSystem"}, "IAMPolicy"]]},
                   "PolicyDocument": {
                       "Version": "2012-10-17",
                       "Statement": [
-                      {
-                          "Effect": "Allow",
-                          "Action": [
-                              "ssm:SendCommand",
-                              "ssm:DescribeInstanceInformation",
-                              "ssm:GetDocument",
-                              "ssm:ListCommands",
-                              "ssm:ListCommandInvocations",
-                              "logs:CreateLogStream",
-                              "logs:PutLogEvents",
-                              "logs:DescribeLogStreams",
-                              "sns:Publish",
-                              "iam:PassRole"
-                          ],
-                          "Resource": "*"
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "ssm:SendCommand",
+                                "ssm:DescribeInstanceInformation",
+                                "ssm:GetDocument",
+                                "ssm:ListCommands",
+                                "ssm:ListCommandInvocations",
+                                "ssm:ListComplianceItems",
+                                "ssm:DescribePatchBaselines",
+                                "ssm:UpdatePatchBaseline",
+                                "ssm:DescribeMaintenanceWindows",
+                                "ssm:DescribeMaintenanceWindowTargets",
+                                "ssm:UpdateMaintenanceWindowTarget",
+                                "logs:CreateLogStream",
+                                "logs:CreateLogGroup",
+                                "logs:PutLogEvents",
+                                "logs:DescribeLogStreams",
+                                "sns:Publish",
+                                "iam:PassRole",
+                                "lambda:InvokeFunction",
+                                "ec2:DescribeInstances",
+                                "ec2:CreateTags",
+                                "s3:PutObject",
+                                "s3:GetObject"
+                                
+                            ],
+                            "Resource": "*"
+                          },
+                          {
+                            "Effect": "Allow",
+                              "Action": [
+                                "s3:GetObject",
+                                "s3:ListBucket"
+                              ],
+                            "Resource": {
+                              "Fn::Sub": "arn:aws:s3:::${ProjectName}-${Environment}-linux-patch-install-s3-bucket/*"
+                            }
+                          }
+                        ]
                       }
-                      ]
-                  }
-                  }
-              ],
+                    }
+                  ],
               "Tags": [
-                {"Key" : "Name", "Value" : { "Fn::Join": [ "-", ["Patch", "Install", {"Ref": "ProjectName"}, { "Ref": "Environment"}, {"Ref": "OperatingSystem"}, "IAMRole"]]}},
+                {"Key" : "Name", "Value" : { "Fn::Join": [ "-", ["PatchInstall", {"Ref": "ProjectName"}, { "Ref": "Environment"}, {"Ref": "OperatingSystem"}, "IAMRole"]]}},
                 {"Key" : "Environment", "Value" : {"Ref" : "Environment"}},
                 {"Key" : "AWSAccountID", "Value" : {"Ref" : "AWSAccountID"}},
                 {"Key" : "AccountOwner", "Value" : {"Ref" : "AccountOwner"}},
@@ -232,8 +306,8 @@
           "PatchBaseLine" :  {
                "Type" : "AWS::SSM::PatchBaseline",
                  "Properties" : {
-                  "Name" : { "Fn::Join": [ "-", ["Patch", "Install", {"Ref": "ProjectName"}, { "Ref": "Environment"}, {"Ref": "OperatingSystem"}, "PatchBaseLine"]]},
-                  "Description" : { "Fn::Join": [ "-", ["Patch", "Install", "PatchBaseline for", {"Ref": "ProjectName"}, { "Ref": "Environment"},  {"Ref": "OperatingSystem"}]]},
+                  "Name" : { "Fn::Join": [ "-", ["PatchInstall", {"Ref": "ProjectName"}, { "Ref": "Environment"}, {"Ref": "OperatingSystem"}, "PatchBaseLine"]]},
+                  "Description" : { "Fn::Join": [ "-", ["PatchInstall", "PatchBaseline for", {"Ref": "ProjectName"}, { "Ref": "Environment"},  {"Ref": "OperatingSystem"}]]},
                    "OperatingSystem" : { "Ref" : "OperatingSystem" },
                    "RejectedPatchesAction": "BLOCK",
                    "RejectedPatches": { "Fn::If": ["HasRejectedPatches", {"Fn::Split": [",", {"Ref": "RejectedPatches"}] }, {"Ref": "AWS::NoValue" }]},
@@ -261,7 +335,7 @@
                     },              
                    "ApprovedPatchesComplianceLevel" : "UNSPECIFIED",
                    "Tags": [
-                    {"Key" : "Name", "Value" : { "Fn::Join": [ "-", ["Patch", "Install", {"Ref": "ProjectName"},{ "Ref": "Environment"}, {"Ref": "OperatingSystem"}, "PatchBaseLine"]]}},
+                    {"Key" : "Name", "Value" : { "Fn::Join": [ "-", ["PatchInstall", {"Ref": "ProjectName"},{ "Ref": "Environment"}, {"Ref": "OperatingSystem"}, "PatchBaseLine"]]}},
                     {"Key" : "Environment", "Value" : {"Ref" : "Environment"}},
                     {"Key" : "AWSAccountID", "Value" : {"Ref" : "AWSAccountID"}},
                     {"Key" : "AccountOwner", "Value" : {"Ref" : "AccountOwner"}},
@@ -278,13 +352,13 @@
               "Type": "AWS::SSM::MaintenanceWindow",
               "Properties": {
                 "Name": { "Fn::Join": [ "-", ["Patch", "Install", {"Ref": "ProjectName"}, { "Ref": "Environment"},  {"Ref": "OperatingSystem"}, "MaintenanceWindow"]]},
-                "Schedule": { "Fn::Sub": "cron(${PatchInstallMaintenanceWindowTime} ? * ${PatchInstallMaintainanceWindowDayOfWeek} * )"},
+                "Schedule": { "Fn::Sub": "cron(${PatchScanMaintainanceWindowTime} ? * ${PatchScanMaintainanceWindowDayOfWeek}${SelectWeekForPatchScan} * )"},
                 "Duration": 2,
                 "Cutoff": 1,
                 "AllowUnassociatedTargets": false,
                 "ScheduleTimezone": { "Ref": "ScheduleTimezone"},
                 "Tags": [
-                  {"Key" : "Name", "Value" : { "Fn::Join": [ "-", ["Patch", "Install", {"Ref": "ProjectName"}, { "Ref": "Environment"},  {"Ref": "OperatingSystem"}, "MaintenanceWindow"]]}},
+                  {"Key" : "Name", "Value" : { "Fn::Join": [ "-", ["PatchInstall", {"Ref": "ProjectName"}, { "Ref": "Environment"},  {"Ref": "OperatingSystem"}, "MaintenanceWindow"]]}},
                   {"Key" : "Environment", "Value" : {"Ref" : "Environment"}},
                   {"Key" : "AWSAccountID", "Value" : {"Ref" : "AWSAccountID"}},
                   {"Key" : "AccountOwner", "Value" : {"Ref" : "AccountOwner"}},
@@ -300,7 +374,7 @@
           "PatchInstallMaintenanceWindowTarget": {
               "Type": "AWS::SSM::MaintenanceWindowTarget",
               "Properties": {
-                "Name" : { "Fn::Join": [ "-", ["Patch", "Install", {"Ref": "ProjectName"}, { "Ref": "Environment"},  {"Ref": "OperatingSystem"}, "WindowTarget"]]},
+                "Name" : { "Fn::Join": [ "-", ["PatchInstall", {"Ref": "ProjectName"}, { "Ref": "Environment"},  {"Ref": "OperatingSystem"}, "WindowTarget"]]},
                 "WindowId": {
                   "Ref": "PatchInstallMaintenanceWindow"
                 },
@@ -319,15 +393,33 @@
                     ]
                   }
                 ],
-                "OwnerInformation": { "Fn::Join": [ "-", ["Patch", "Install", {"Ref": "ProjectName"}, { "Ref": "Environment"},  {"Ref": "OperatingSystem"}, "Maintainance Window Target"]]}
+                "OwnerInformation": { "Fn::Join": [ "-", ["PatchInstall", {"Ref": "ProjectName"}, { "Ref": "Environment"},  {"Ref": "OperatingSystem"}, "Maintainance Window Target"]]}
+              }
+            },
+
+            "Ec2TaggingMaintenanceWindowTask": {
+              "Type": "AWS::SSM::MaintenanceWindowTask",
+              "Properties": {
+                  "Priority": 1,   
+                  "WindowId": {
+                  "Ref": "PatchInstallMaintenanceWindow"
+                  },
+                  "TaskArn": {"Fn::GetAtt": ["PatchLambdaFunction", "Arn"]},
+                "ServiceRoleArn": {
+                    "Fn::GetAtt": [
+                    "PatchExecutionRole",
+                    "Arn"
+                    ]
+                  },
+                "TaskType": "LAMBDA"
               }
             },
   
           "PatchInstallMaintenanceWindowTask": {
               "Type": "AWS::SSM::MaintenanceWindowTask",
               "Properties": {
-                "Name" : { "Fn::Join": [ "-", ["Patch", "Install", {"Ref": "ProjectName"}, { "Ref": "Environment"},  {"Ref": "OperatingSystem"}, "MaintainanceWindowTask"]]},
-                  "Priority": 1,
+                "Name" : { "Fn::Join": [ "-", ["PatchInstall", {"Ref": "ProjectName"}, { "Ref": "Environment"},  {"Ref": "OperatingSystem"}, "MaintainanceWindowTask"]]},
+                  "Priority": 2,
                   "MaxConcurrency": "1",
                   "MaxErrors": "1",   
                   "WindowId": {
@@ -367,7 +459,7 @@
                 },
                   "NotificationConfig": {
                       "NotificationArn": { "Ref": "NotificationTopic"},
-                      "NotificationEvents": ["All"],
+                      "NotificationEvents": ["Success"],
                       "NotificationType": "Command"
                   },
                   "ServiceRoleArn": {
@@ -400,68 +492,7 @@
           }
         },
   
-        "PatchLambdaExecutionRole": {
-              "Type": "AWS::IAM::Role",
-              "Properties": {
-              "RoleName": { "Fn::Join": [ "-", ["Patch", "Install",{"Ref": "ProjectName"}, { "Ref": "Environment"},{"Ref": "OperatingSystem"}, "Lambda", "IAMRole"]]},
-                  "AssumeRolePolicyDocument": {
-                      "Version": "2012-10-17",
-                      "Statement": [{
-                          "Effect": "Allow",
-                          "Principal": {
-                              "Service": "lambda.amazonaws.com"
-                          },
-                          "Action": "sts:AssumeRole"
-                      }]
-                  },
-                  "Policies": [{
-                      "PolicyName": "PatchLambdaPolicy",
-                      "PolicyDocument": {
-                          "Version": "2012-10-17",
-                          "Statement": [{
-                              "Effect": "Allow",
-                              "Action": [
-                                  "ssm:DescribePatchBaselines",
-                                  "ssm:UpdatePatchBaseline",
-                                  "ssm:DescribeMaintenanceWindows",
-                                  "ssm:DescribeMaintenanceWindowTargets",
-                                  "ssm:UpdateMaintenanceWindowTarget",
-                                  "s3:GetObject",
-                                  "s3:ListBucket"
-                              ],
-                              "Resource": "*"
-                          },
-                          {
-                              "Effect": "Allow",
-                              "Action": [
-                                  "logs:PutLogEvents",
-                                  "logs:CreateLogGroup",
-                                  "logs:CreateLogStream"
-                          ],
-                              "Resource": {
-                                "Fn::GetAtt": [
-                                "PatchInstallLogGroup",
-                                "Arn"
-                              ]
-                            }
-                          },
-                          {
-                              "Effect": "Allow",
-                              "Action": [
-                              "s3:GetObject",
-                              "s3:ListObject",
-                              "s3:ListBucket"
-                              ],
-                              "Resource": {
-                                "Fn::Sub": "arn:aws:s3:::${ProjectName}-${Environment}-windows-patch-install-s3-bucket"
-                              }
-                          }                                                
-                        ]
-                      }
-                  }]
-              }
-          },
-          
+                 
           "PatchS3Bucket": {
             "DependsOn": ["PatchLambdaFunction"],
             "Type": "AWS::S3::Bucket",
@@ -491,145 +522,481 @@
             }
           },
   
-        "PatchLambdaFunction": {
-              "DependsOn": ["PatchLambdaExecutionRole"],
-              "Type": "AWS::Lambda::Function",
-              "Properties": {
-                "FunctionName": { "Fn::Join": ["-", ["Patch", "Install", { "Ref": "ProjectName" }, { "Ref": "Environment" }, {"Ref": "OperatingSystem"}, "lambda" ]] },
-                  "Handler": "index.lambda_handler",
-                  "Role": {
-                      "Fn::GetAtt": ["PatchLambdaExecutionRole", "Arn"]
-                  },
-                  "Code": {
-                      "ZipFile": {
-                          "Fn::Join": [
+        "PatchS3LambdaFunction": {
+            "DependsOn": ["PatchLambdaExecutionRole"],
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "FunctionName" : { "Fn::Join": ["-", ["PatchInstall-on-S3Trigger", { "Ref": "ProjectName" }, { "Ref": "Environment" }, {"Ref": "OperatingSystem"}, "function" ]] },
+                "Handler": "index.lambda_handler",
+                "Role": {
+                    "Fn::GetAtt": ["PatchLambdaExecutionRole", "Arn"]
+                },
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                              "import boto3",
+                              "import json",
+                              "import logging",
+                              "import os",
                               "",
-                              [
-                                "import boto3\n",
-                                "import json\n",
-                                "import logging\n",
-                                "import os\n",
-                                "\n",
-                                
-  
-                                "# Configure logging\n",
-                                "logging.basicConfig(level=logging.INFO)\n",
-                                "logger = logging.getLogger()\n",
-                                "\n",
-  
-  
-                                "def lambda_handler(event, context):\n",
-                                "    s3 = boto3.client('s3')\n",
-                                "    ssm = boto3.client('ssm')\n",
-                                "    bucket_name = os.environ['PATCH_S3_BUCKET']\n",
-                                "    file_key = 'patch-exclusions.json'\n",
-                                "    \n",
-  
-  
-                                "    response = s3.get_object(Bucket=bucket_name, Key=file_key)\n",
-                                "    patch_info = json.loads(response['Body'].read().decode('utf-8'))\n",
-                                "    logger.info('Successfully fetched patch exclusions from S3')\n",
-                                "    \n",
-  
-  
-                                "    # If instance_id is passed via event, use it\n",
-                                "    if 'instance_id' in event:\n",
-                                "        instance_id = event['instance_id']\n",
-                                "    else:\n",
-                                "        # If instance_id is not passed in event, try to extract it from the S3 data\n",
-                                "        if len(patch_info.keys()) == 1:\n",
-                                "            instance_id = list(patch_info.keys())[0]\n",
-                                "        else:\n",
-                                "            logger.error('Missing instance_id in event data and cannot infer it from S3 file')\n",
-                                "            return {\n",
-                                "                'statusCode': 400,\n",
-                                "                'body': 'Missing instance_id in event data and cannot infer it from S3 file'\n",
-                                "            }\n",
-                                "    \n",
-  
-  
-                                "    patches_to_exclude = patch_info.get(instance_id, {}).get('exclude_patches', [])\n",
-                                "    \n",
-  
-  
-                                "    if not patches_to_exclude:\n",
-                                "        logger.info(f'No patches to exclude for instance {instance_id}')\n",
-                                "        return {\n",
-                                "            'statusCode': 400,\n",
-                                "            'body': f'No patches to exclude for instance {instance_id}'\n",
-                                "        }\n",
-                                "    \n",
-  
-  
-                                "    response = ssm.describe_patch_baselines(\n",
-                                "        Filters=[\n",
-                                "            {\n",
-                                "                'Key': 'NAME_PREFIX',\n",
-                                "                'Values': [os.environ['PATCH_BASELINE_NAME']]\n",
-                                "            }\n",
-                                "        ]\n",
-                                "    )\n",
-  
-  
-                                "    patch_baseline_id = response['BaselineIdentities'][0]['BaselineId']\n",
-                                "    ssm.update_patch_baseline(\n",
-                                "        BaselineId=patch_baseline_id,\n",
-                                "        RejectedPatches=patches_to_exclude\n",
-                                "    )\n",
-  
-  
-                                "    logger.info(f'Updated patch baseline {patch_baseline_id} with patches to exclude for instance {instance_id}')\n",
-                                "    \n",
-  
-  
-                                "    maintenance_window_id = os.environ['MAINTAINANCE_WINDOW_ID']\n",
-                                "    target_id = os.environ['MAINTAINANCE_WINDOW_TARGET_ID']\n",
-                                "    \n",
-  
-  
-                                "    ssm.update_maintenance_window_target(\n",
-                                "        WindowId=maintenance_window_id,\n",
-                                "        WindowTargetId=target_id,\n",
-                                "        Targets=[\n",
-                                "            {\n",
-                                "                'Key': 'InstanceIds',\n",
-                                "                'Values': [instance_id]\n",
-                                "            }\n",
-                                "        ]\n",
-                                "    )\n",
-  
-  
-                                "    logger.info(f'Updated maintenance window target {target_id} for instance {instance_id}')\n",
-                                "    \n",
-  
-                                
-                                "    return {\n",
-                                "        'statusCode': 200,\n",
-                                "        'body': f'Updated patch baseline {patch_baseline_id} and maintenance window target {target_id} for instance {instance_id}'\n",
-                                "    }\n"
-                              ]
+                              
+
+                              "# Configure logging",
+                              "logging.basicConfig(level=logging.INFO)",
+                              "logger = logging.getLogger()",
+                              "",
+
+
+                              "def lambda_handler(event, context):",
+                              "    s3 = boto3.client('s3')",
+                              "    ssm = boto3.client('ssm')",
+                              "    bucket_name = os.environ['PATCH_S3_BUCKET']",
+                              "    file_key = 'patch-exclusions.json'",
+                              "",
+
+
+                              "    response = s3.get_object(Bucket=bucket_name, Key=file_key)",
+                              "    patch_info = json.loads(response['Body'].read().decode('utf-8'))",
+                              "    logger.info('Successfully fetched patch exclusions from S3')",
+                              "    ",
+
+
+                              "    # If instance_id is passed via event, use it",
+                              "    if 'instance_id' in event:",
+                              "        instance_id = event['instance_id']",
+                              "    else:",
+                              "        # If instance_id is not passed in event, try to extract it from the S3 data",
+                              "        if len(patch_info.keys()) == 1:",
+                              "            instance_id = list(patch_info.keys())[0]",
+                              "        else:",
+                              "            logger.error('Missing instance_id in event data and cannot infer it from S3 file')",
+                              "            return {",
+                              "                'statusCode': 400,",
+                              "                'body': 'Missing instance_id in event data and cannot infer it from S3 file'",
+                              "            }",
+                              "",
+
+
+                              "    patches_to_exclude = patch_info.get(instance_id, {}).get('exclude_patches', [])",
+                              "",
+
+
+                              "    if not patches_to_exclude:",
+                              "        logger.info(f'No patches to exclude for instance {instance_id}')",
+                              "        return {",
+                              "            'statusCode': 400,",
+                              "            'body': f'No patches to exclude for instance {instance_id}'",
+                              "        }",
+                              "",
+
+
+                              "    response = ssm.describe_patch_baselines(",
+                              "        Filters=[",
+                              "            {",
+                              "                'Key': 'NAME_PREFIX',",
+                              "                'Values': [os.environ['PATCH_BASELINE_NAME']]",
+                              "            }",
+                              "        ]",
+                              "    )",
+
+
+                              "    patch_baseline_id = response['BaselineIdentities'][0]['BaselineId']",
+                              "    ssm.update_patch_baseline(",
+                              "        BaselineId=patch_baseline_id,",
+                              "        RejectedPatches=patches_to_exclude",
+                              "    )",
+
+
+                              "    logger.info(f'Updated patch baseline {patch_baseline_id} with patches to exclude for instance {instance_id}')",
+                              "",
+
+
+                              "    maintenance_window_id = os.environ['MAINTAINANCE_WINDOW_ID']",
+                              "    target_id = os.environ['MAINTAINANCE_WINDOW_TARGET_ID']",
+                              "",
+
+
+                              "    ssm.update_maintenance_window_target(",
+                              "        WindowId=maintenance_window_id,",
+                              "        WindowTargetId=target_id,",
+                              "        Targets=[",
+                              "            {",
+                              "                'Key': 'InstanceIds',",
+                              "                'Values': [instance_id]",
+                              "            }",
+                              "        ]",
+                              "    )",
+
+
+                              "    logger.info(f'Updated maintenance window target {target_id} for instance {instance_id}')",
+                              "",
+
+                              
+                              "    return {",
+                              "        'statusCode': 200,",
+                              "        'body': f'Updated patch baseline {patch_baseline_id} and maintenance window target {target_id} for instance {instance_id}'",
+                              "    }"
                             ]
-                      }
-                  },
-                  "Runtime": "python3.9",
-                  "Timeout": 300,
-                  "Environment": {
-                    "Variables": {
-                    "PATCH_S3_BUCKET": {
-                       "Fn::Join": ["-", [{ "Ref": "ProjectName" }, { "Ref": "Environment" }, "windows-patch-install-s3-bucket" ]]
-                    },
-                    "PATCH_BASELINE_NAME": 
-                    { "Fn::Join": [ "-", ["Patch", "Install", {"Ref": "ProjectName"}, { "Ref": "Environment"}, {"Ref": "OperatingSystem"}, "PatchBaseLine"]]},
-  
-                    "MAINTAINANCE_WINDOW_ID": {
-                      "Ref": "PatchInstallMaintenanceWindow"
-                    },
-                    "MAINTAINANCE_WINDOW_TARGET_ID": {
-                      "Ref": "PatchInstallMaintenanceWindowTarget"
+                          ]
                     }
+                },
+                "Runtime": "python3.9",
+                "Timeout": 300,
+                "Environment": {
+                  "Variables": {
+                  "PATCH_S3_BUCKET": {
+                     "Fn::Join": ["-", [{ "Ref": "ProjectName" }, { "Ref": "Environment" }, "linux-patch-install-s3-bucket" ]]
+                  },
+                  "PATCH_BASELINE_NAME": 
+                  { "Fn::Join": [ "-", ["PatchInstall", { "Ref": "Environment"}, {"Ref": "ProjectName"}, {"Ref": "OperatingSystem"}, "PatchBaseLine"]]},
+
+                  "MAINTAINANCE_WINDOW_ID": {
+                    "Ref": "PatchInstallMaintenanceWindow"
+                  },
+                  "MAINTAINANCE_WINDOW_TARGET_ID": {
+                    "Ref": "PatchInstallMaintenanceWindowTarget"
                   }
                 }
               }
+            }
+        },
+
+        "PatchLambdaFunction": {
+          "DependsOn": ["PatchExecutionRole"],
+          "Type": "AWS::Lambda::Function",
+          "Properties": {
+            "FunctionName" : { "Fn::Join": ["-", ["PatchInstall", { "Ref": "ProjectName" }, { "Ref": "Environment" }, {"Ref": "OperatingSystem"}, "function" ]] },
+              "Handler": "index.lambda_handler",
+              "Role": {
+                  "Fn::GetAtt": ["PatchExecutionRole", "Arn"]
+              },
+              "Code": {
+                  "ZipFile": {
+                      "Fn::Join": [
+                          "\n",
+                          [
+                            "import boto3",
+                            "import os",
+                            "import json",
+                            "import time",
+
+                            "def lambda_handler(event, context):",
+                            "    ec2 = boto3.client('ec2')",
+
+                            "    # Filter to get instances with the tag 'env=dev'",
+                            "    filters = [",
+                            "        {",
+                            "            'Name': 'tag:Environment',",
+                            "            'Values': [os.environ['Environment']]",
+                            "        },",
+                            "        {",
+                            "            'Name': 'tag:SystemType',",
+                            "            'Values': ['Windows']",
+                            "        }",                                                            
+                            "    ]",
+
+                            "    # Describe instances that match the filter",
+                            "    instances = ec2.describe_instances(Filters=filters)",
+
+
+                            "    # List to store instance IDs that need tagging",
+                            "    instance_ids = []",
+
+                            "    for reservation in instances['Reservations']:",
+                            "        for instance in reservation['Instances']:",
+                            "            instance_id = instance['InstanceId']",
+                            "            instance_ids.append(instance_id)",
+
+                            "    # Check if there are instances to tag",
+                            "    if instance_ids:",
+                            "        # Apply PatchGroup tag to all filtered instances",
+                            "        ec2.create_tags(",
+                            "            Resources=instance_ids,",
+                            "            Tags=[",
+                            "                {'Key': 'PatchGroup', 'Value': os.environ['PatchGroupName']}",
+                            "            ]",
+                            "        )",
+
+
+
+                            "        print(f\"Applied PatchGroup=test tag to instances: {instance_ids}\")",
+                            "       # Sleep for 300 seconds to allow the tags to propagate",
+                            "        time.sleep(300)",                             
+                            "    else:",
+
+                            "        print(\"No instances found with Environment=os.environ['Environment'] tag\")",                           
+                            "    return {",
+
+                            "        'statusCode': 200,",
+                            "        'body': f\"Tagged {len(instance_ids)} instance(s) with PatchGroup=os.environ['PatchGroupName']\"",
+                            "    }"
+                          ]
+                        ]
+                      }
+                    },
+              "Runtime": "python3.9",
+              "Timeout": 600,
+              "Environment": {
+                "Variables": {
+                    "Environment": { "Ref": "Environment" },
+                    "PatchGroupName": { "Ref": "PatchGroupName" }
+                  } 
+                }
+
+              }
+            },
+
+
+      "JIRALambdaFunction": {
+          "DependsOn": ["PatchExecutionRole"],
+          "Type": "AWS::Lambda::Function",
+          "Properties": {
+            "FunctionName" : { "Fn::Join": ["-", ["JIRA-PatchInstall", { "Ref": "ProjectName" }, { "Ref": "Environment" }, {"Ref": "OperatingSystem"}, "function" ]] },
+              "Handler": "index.lambda_handler",
+              "Role": {"Fn::GetAtt": ["PatchExecutionRole", "Arn"]},
+              "Code": {
+                "ZipFile": {
+                    "Fn::Join": [
+                        "\n",
+                        [
+                          "import json",
+                          "import urllib.request",
+                          "import base64",
+                          "import os",
+                          "import boto3",
+                          "import csv",
+                          "from io import StringIO, BytesIO",
+                          "from datetime import datetime",
+                          "",
+                          "# Environment Variables",
+                          "JIRA_URL = os.environ['JIRA_URL']",
+                          "JIRA_USER = os.environ['JIRA_USERNAME']",
+                          "JIRA_API_TOKEN = os.environ['JIRA_API_TOKEN']",
+                          "JIRA_PROJECT = os.environ['JIRA_PROJECT']",
+                          "PATCH_GROUP_NAME = os.environ['PatchGroupName']",
+                          "S3_BUCKET_NAME = os.environ['S3_BUCKET_NAME']",
+                          "CUSTOMER_NAME = os.environ['CUSTOMER_NAME']",
+                          "",
+                          "# AWS Clients",
+                          "ssm_client = boto3.client('ssm')",
+                          "ec2_client = boto3.client('ec2')",
+                          "s3_client = boto3.client('s3')",
+                          "",
+                          "def lambda_handler(event, context):",
+                          "    sns_message = event['Records'][0]['Sns']['Message']",
+                          "    sns_message_json = json.loads(sns_message)",
+                          "    print('SNS Message: ', json.dumps(sns_message_json, indent=2))",
+                          "    task_command_id = sns_message_json.get('commandId', '')",
+                          "",
+                          "    if task_command_id and len(task_command_id) == 36:",
+                          "        instance_ids = get_instances_from_command_invocation(task_command_id)",
+                          "    else:",
+                          "        print(f'Invalid or missing Command ID: {task_command_id}')",
+                          "        instance_ids = []",
+                          "",
+                          "    scheduled_time = sns_message_json.get('eventTime', '')",
+                          "",
+                          "    instance_name_map = get_instance_name_map(instance_ids)",
+                          "",
+                          "    jira_ticket_number = create_jira_ticket(instance_ids, instance_name_map, scheduled_time, task_command_id)",
+                          "",
+                          "    if jira_ticket_number and instance_ids:",
+                          "        tag_instances_with_jira_ticket(instance_ids, jira_ticket_number)",
+                          "",
+                          "    if instance_ids:",
+                          "        compliance_report = generate_compliance_report(instance_ids)",
+                          "        s3_file_path = upload_report_to_s3(compliance_report, jira_ticket_number)",
+                          "        attach_file_to_jira_ticket(jira_ticket_number, s3_file_path)",
+                          "",
+                          "    return {'statusCode': 200, 'body': json.dumps('JIRA ticket created, instances tagged, compliance report uploaded, and attached to the JIRA ticket.')}",
+                          "",
+                          "",
+                          "def get_instances_from_command_invocation(command_id):",
+                          "    instance_ids = []",
+                          "    response = ssm_client.list_command_invocations(",
+                          "        CommandId=command_id,",
+                          "        Details=True",
+                          "    )",
+                          "    for invocation in response['CommandInvocations']:",
+                          "        instance_ids.append(invocation['InstanceId'])",
+                          "    return instance_ids",
+                          "",
+                          "def get_instance_name_map(instance_ids):",
+                          "    instance_name_map = {}",
+                          "    if instance_ids:",
+                          "        response = ec2_client.describe_instances(InstanceIds=instance_ids)",
+                          "        for reservation in response['Reservations']:",
+                          "            for instance in reservation['Instances']:",
+                          "                instance_id = instance['InstanceId']",
+                          "                instance_name = next(",
+                          "                    (tag['Value'] for tag in instance.get('Tags', []) if tag['Key'] == 'Name'),",
+                          "                    'Unnamed'",
+                          "                )",
+                          "                instance_name_map[instance_id] = instance_name",
+                          "    return instance_name_map",
+                          "",
+                          "def create_jira_ticket(instance_ids, instance_name_map, scheduled_time, task_command_id):",
+                          "    instances_info = '\\n'.join([f\"{instance_id} ({instance_name_map.get(instance_id, 'Unnamed')})\" for instance_id in instance_ids])",
+                          "    jira_data = {",
+                          "        'fields': {",
+                          "            'project': {'key': JIRA_PROJECT},",
+                          "            'summary': f'Patch Install Status Success for Customer - {CUSTOMER_NAME}',",
+                          "            'description': (",
+                          "                f'*PatchGroup Name:* {PATCH_GROUP_NAME}\\n\\n'",
+                          "                f'*Instances:*\\n{instances_info}\\n\\n'",
+                          "                f'*Scheduled Time:*\\n{scheduled_time}\\n\\n'",
+                          "                f'*Task Command ID:*\\n{task_command_id}\\n'",
+                          "            ),",
+                          "            'issuetype': {'name': 'Task'}",
+                          "        }",
+                          "    }",
+                          "    auth_string = f'{JIRA_USER}:{JIRA_API_TOKEN}'",
+                          "    auth_encoded = base64.b64encode(auth_string.encode()).decode('utf-8')",
+                          "    req = urllib.request.Request(f'{JIRA_URL}/rest/api/2/issue', data=json.dumps(jira_data).encode(), headers={'Authorization': f'Basic {auth_encoded}', 'Content-Type': 'application/json'})",
+                          "    with urllib.request.urlopen(req) as response:",
+                          "        jira_response = response.read().decode()",
+                          "        print('JIRA Response: ', jira_response)",
+                          "        jira_response_json = json.loads(jira_response)",
+                          "        jira_ticket_number = jira_response_json.get('key')",
+                          "        return jira_ticket_number",
+                          "",
+
+                          "def generate_compliance_report(instance_ids):",
+                          "    compliance_data = []",
+                          "    for instance_id in instance_ids:",
+                          "        response_compliant = ssm_client.list_compliance_items(",
+                          "            ResourceIds=[instance_id],",
+                          "            ResourceTypes=['ManagedInstance'],",
+                          "            Filters=[",
+                          "                {",
+                          "                    'Key': 'ComplianceType',",
+                          "                    'Values': ['Patch']",
+                          "                },",
+                          "                {",
+                          "                    'Key': 'Status',",
+                          "                    'Values': ['COMPLIANT']",
+                          "                }",
+                          "            ]",
+                          "        )",
+                          "        response_non_compliant = ssm_client.list_compliance_items(",
+                          "            ResourceIds=[instance_id],",
+                          "            ResourceTypes=['ManagedInstance'],",
+                          "            Filters=[",
+                          "                {",
+                          "                    'Key': 'ComplianceType',",
+                          "                    'Values': ['Patch']",
+                          "                },",
+                          "                {",
+                          "                    'Key': 'Status',",
+                          "                    'Values': ['NON_COMPLIANT']",
+                          "                }",
+                          "            ]",
+                          "        )",
+                          "",
+                          "        # Combine both responses",
+                          "        combined_items = response_compliant['ComplianceItems'] + response_non_compliant['ComplianceItems']",
+                          "        for item in combined_items:",
+                          "            compliance_data.append({",
+                          "                'InstanceId': instance_id,",
+                          "                'ComplianceType': item['ComplianceType'],",
+                          "                'Status': item['Status'],",
+                          "                'Title': item.get('Title', 'N/A'),",
+                          "                'Severity': item.get('Severity', 'N/A')",
+                          "            })",
+                          "    output = StringIO()",
+                          "    writer = csv.DictWriter(output, fieldnames=['InstanceId', 'ComplianceType', 'Status', 'Title', 'Severity'])",
+                          "    writer.writeheader()",
+                          "    writer.writerows(compliance_data)",
+                          "    return output.getvalue()",
+                          "",
+
+
+                          "def attach_file_to_jira_ticket(jira_ticket_number, s3_file_path):",
+                          "    file_obj = s3_client.get_object(Bucket=S3_BUCKET_NAME, Key=s3_file_path)",
+                          "    file_content = file_obj['Body'].read()",
+                          "    file_name = os.path.basename(s3_file_path)",
+                          "    attachment_url = f'{JIRA_URL}/rest/api/2/issue/{jira_ticket_number}/attachments'",
+                          "    auth_string = f'{JIRA_USER}:{JIRA_API_TOKEN}'",
+                          "    auth_encoded = base64.b64encode(auth_string.encode()).decode('utf-8')",
+                          "    headers = {",
+                          "        'Authorization': f'Basic {auth_encoded}',",
+                          "        'X-Atlassian-Token': 'no-check'",
+                          "    }",
+                          "    boundary = '----WebKitFormBoundary7MA4YWxkTrZu0gW'",
+                          "    data = (",
+                          "        f'--{boundary}\\r\\n'",
+                          "        f'Content-Disposition: form-data; name=\"file\"; filename=\"{file_name}\"\\r\\n'",
+                          "        f'Content-Type: text/csv\\r\\n\\r\\n'",
+                          "    ).encode() + file_content + f'\\r\\n--{boundary}--\\r\\n'.encode()",
+                          "    request = urllib.request.Request(attachment_url, data=data, headers={",
+                          "        **headers,",
+                          "        'Content-Type': f'multipart/form-data; boundary={boundary}'",
+                          "    })",
+                          "    try:",
+                          "        with urllib.request.urlopen(request) as response:",
+                          "            print('File attached to JIRA ticket successfully:', response.read().decode())",
+                          "    except urllib.error.HTTPError as e:",
+                          "        print('Failed to attach file to JIRA ticket:', e.read().decode())",
+                          "",
+                          "def tag_instances_with_jira_ticket(instance_ids, jira_ticket_number):",
+                          "    tag = {",
+                          "        'Key': 'JiraTicket',",
+                          "        'Value': jira_ticket_number",
+                          "    }",
+                          "    ec2_client.create_tags(Resources=instance_ids, Tags=[tag])",
+                          "    print(f'Tagged instances {instance_ids} with JIRA ticket: {jira_ticket_number}')",
+                          "",
+
+                          "def upload_report_to_s3(compliance_report, jira_ticket_number):",
+                          "    current_time = datetime.now()",
+                          "    folder_path = current_time.strftime('%Y-%m-%d-%H-%M')",
+                          "    file_name = f'patch_install_report/windows/{folder_path}/patch-install-compliance-report-{jira_ticket_number}.csv'",
+                          "    s3_client.put_object(Bucket=S3_BUCKET_NAME, Key=file_name, Body=compliance_report, ContentType='text/csv')",
+                          "    print(f'Compliance report uploaded to S3: s3://{S3_BUCKET_NAME}/{file_name}')",
+                          "    return file_name"
+                        ]
+                      ]
+                    }
+                  },
+              "Runtime": "python3.9",
+              "Timeout": 300,
+              "Environment": {
+                "Variables": {
+                    "JIRA_URL": {"Ref": "JiraUrl"},
+                    "JIRA_USERNAME": {"Ref": "JiraUsername"},
+                    "JIRA_PROJECT" : {"Ref": "JiraProject"},
+                    "JIRA_API_TOKEN": {"Ref": "JiraApiToken"},
+                    "PatchGroupName": {"Ref": "PatchGroupName"},
+                    "OperatingSystem": {"Ref": "OperatingSystem"},
+                    "CUSTOMER_NAME": {"Ref": "CustomerName"},
+                    "S3_BUCKET_NAME": {"Ref": "PatchReportBucket"}
+                    } 
+                  }
+                }
+              },
+
+            "LambdaNotificationTopicSubscription" : {
+              "Type" : "AWS::SNS::Subscription",
+              "Properties" : {
+                "Endpoint" : {"Fn::GetAtt": ["JIRALambdaFunction", "Arn"]},
+                "Protocol" : "Lambda",
+                "TopicArn" : {"Ref": "NotificationTopic"}
+              }
+            },
+
+            "LambdaJIRAInvokePermission": {
+              "DependsOn" : ["JIRALambdaFunction"],
+              "Type": "AWS::Lambda::Permission",
+                "Properties": {
+                  "FunctionName": {
+                    "Fn::GetAtt": ["JIRALambdaFunction", "Arn"]
+                    },
+                  "Action": "lambda:InvokeFunction",
+                  "Principal": "sns.amazonaws.com",
+                  "SourceArn": {"Ref": "NotificationTopic"}
+                }
+              }        
+            }
           }
-      }
-}

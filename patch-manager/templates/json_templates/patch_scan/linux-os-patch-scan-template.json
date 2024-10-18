@@ -119,7 +119,7 @@
           "ScheduleTimezone" : {
               "Description" : "Patching Schedule time zone",
               "Type" : "String",
-              "Default" : "Etc/UTC"
+              "Default" : "Asia/Kolkata"
           },
 
           "JiraApiToken" : {
@@ -227,7 +227,7 @@
                     "Service": [
                         "ssm.amazonaws.com",
                         "lambda.amazonaws.com"
-                    ]
+                      ]
                     },
                     "Action": "sts:AssumeRole"
                 }
@@ -507,7 +507,11 @@
                               "        {",
                               "            'Name': 'tag:Environment',",
                               "            'Values': [os.environ['Environment']]",
-                              "        }",
+                              "        },",
+                              "        {",
+                              "            'Name': 'tag:SystemType',",
+                              "            'Values': ['Windows']",
+                              "        }",                                                            
                               "    ]",
 
                               "    # Describe instances that match the filter",
@@ -763,7 +767,7 @@
                             "def upload_report_to_s3(compliance_report, jira_ticket_number):",
                             "    current_time = datetime.now()",
                             "    folder_path = current_time.strftime('%Y-%m-%d-%H-%M')",
-                            "    file_name = f'patch_scan_report/{folder_path}/patch-scan-compliance-report-{jira_ticket_number}.csv'",
+                            "    file_name = f'patch_scan_report/linux/{folder_path}/patch-scan-compliance-report-{jira_ticket_number}.csv'",
                             "    s3_client.put_object(Bucket=S3_BUCKET_NAME, Key=file_name, Body=compliance_report, ContentType='text/csv')",
                             "    print(f'Compliance report uploaded to S3: s3://{S3_BUCKET_NAME}/{file_name}')",
                             "    return file_name"
