@@ -510,7 +510,7 @@
                               "        },",
                               "        {",
                               "            'Name': 'tag:SystemType',",
-                              "            'Values': ['Windows']",
+                              "            'Values': ['linux']",
                               "        }",                                                            
                               "    ]",
 
@@ -535,7 +535,7 @@
                               "                {'Key': 'PatchGroup', 'Value': os.environ['PatchGroupName']}",
                               "            ]",
                               "        )",
-                              "        print(f\"Applied PatchGroup=test tag to instances: {instance_ids}\")",
+                              "        print(f\"Applied PatchGroup=os.environ['PatchGroupName'] tag to instances: {instance_ids}\")",
                               "       # Sleep for 300 seconds to allow the tags to propagate",
                               "        time.sleep(300)",
                               "    else:",
@@ -583,7 +583,9 @@
                             "import csv",
                             "from io import StringIO, BytesIO",
                             "from datetime import datetime",
+
                             "",
+
                             "# Environment Variables",
                             "JIRA_URL = os.environ['JIRA_URL']",
                             "JIRA_USER = os.environ['JIRA_USERNAME']",
@@ -592,11 +594,14 @@
                             "PATCH_GROUP_NAME = os.environ['PatchGroupName']",
                             "S3_BUCKET_NAME = os.environ['S3_BUCKET_NAME']",
                             "CUSTOMER_NAME = os.environ['CUSTOMER_NAME']",
+
                             "",
                             "# AWS Clients",
                             "ssm_client = boto3.client('ssm')",
                             "ec2_client = boto3.client('ec2')",
                             "s3_client = boto3.client('s3')",
+
+
                             "",
                             "def lambda_handler(event, context):",
                             "    sns_message = event['Records'][0]['Sns']['Message']",
@@ -637,6 +642,8 @@
                             "        instance_ids.append(invocation['InstanceId'])",
                             "    return instance_ids",
                             "",
+
+
                             "def get_instance_name_map(instance_ids):",
                             "    instance_name_map = {}",
                             "    if instance_ids:",
@@ -651,6 +658,8 @@
                             "                instance_name_map[instance_id] = instance_name",
                             "    return instance_name_map",
                             "",
+
+
                             "def create_jira_ticket(instance_ids, instance_name_map, scheduled_time, task_command_id):",
                             "    instances_info = '\\n'.join([f\"{instance_id} ({instance_name_map.get(instance_id, 'Unnamed')})\" for instance_id in instance_ids])",
                             "    jira_data = {",
@@ -677,6 +686,7 @@
                             "        return jira_ticket_number",
                             "",
 
+                            
                             "def generate_compliance_report(instance_ids):",
                             "    compliance_data = []",
                             "    for instance_id in instance_ids:",
